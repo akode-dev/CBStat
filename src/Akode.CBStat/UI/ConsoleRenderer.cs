@@ -6,6 +6,13 @@ namespace Akode.CBStat.UI;
 
 public class ConsoleRenderer
 {
+    private int _workDayStartHour = 1;
+
+    public void SetWorkDayStartHour(int hour)
+    {
+        _workDayStartHour = Math.Clamp(hour, 0, 23);
+    }
+
     public IRenderable BuildDisplay(IReadOnlyList<UsageData> data, DisplayMode mode)
     {
         return mode switch
@@ -102,7 +109,7 @@ public class ConsoleRenderer
         };
     }
 
-    private static IRenderable BuildProgressRow(string label, UsageWindow window)
+    private IRenderable BuildProgressRow(string label, UsageWindow window)
     {
         var percent = window.Percent;
         var color = GetPercentColor(percent);
@@ -111,7 +118,7 @@ public class ConsoleRenderer
         var emptyWidth = barWidth - filledWidth;
 
         var bar = new string('\u2588', filledWidth) + new string('\u2591', emptyWidth);
-        var dailyBudget = window.DailyBudgetText;
+        var dailyBudget = window.GetDailyBudgetText(_workDayStartHour);
         var budgetPart = string.IsNullOrEmpty(dailyBudget) ? "" : $" [dim]{dailyBudget}[/]";
 
         return new Markup($"{label,-8} [{color}]{bar}[/] {percent,3:F0}%{budgetPart}");
@@ -128,7 +135,7 @@ public class ConsoleRenderer
         foreach (var provider in data)
         {
             if (rows.Count > 0)
-                rows.Add(new Markup("")); // Empty line between providers
+                rows.Add(new Text("")); // Empty line between providers
 
             rows.AddRange(BuildCompactProviderBlock(provider));
         }
@@ -165,13 +172,13 @@ public class ConsoleRenderer
         // Note: Tertiary (T) not shown in compact mode
     }
 
-    private static string BuildCompactLine(string prefix, UsageWindow window)
+    private string BuildCompactLine(string prefix, UsageWindow window)
     {
         var percent = window.Percent;
         var color = GetPercentColor(percent);
 
         // Budget always with one decimal: (14.5)
-        var budget = window.ComputeDailyBudget();
+        var budget = window.ComputeDailyBudget(_workDayStartHour);
         var budgetPart = budget.HasValue ? $"({budget:F1})" : "";
 
         // Reset time and day

@@ -52,6 +52,13 @@ public class AppSettings
     public DisplayMode DisplayMode { get; set; } = DisplayMode.Vertical;
 
     /// <summary>
+    /// Hour when the "work day" starts for daily budget calculation (0-23).
+    /// Default is 1 (1:00 AM). This determines when your work day begins
+    /// for calculating how much quota you can use today.
+    /// </summary>
+    public int WorkDayStartHour { get; set; } = 1;
+
+    /// <summary>
     /// Gets enabled providers in display order.
     /// </summary>
     public IEnumerable<ProviderConfig> GetEnabledProviders() =>
@@ -68,6 +75,7 @@ public class AppSettings
         RefreshIntervalSeconds = 120,
         DeveloperModeEnabled = false,
         CommandTimeoutSeconds = 30,
-        DisplayMode = DisplayMode.Vertical
+        DisplayMode = DisplayMode.Vertical,
+        WorkDayStartHour = 1
     };
 }

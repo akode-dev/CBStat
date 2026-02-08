@@ -19,7 +19,7 @@ public class SettingsUI
         while (true)
         {
             Console.Clear();
-            AnsiConsole.MarkupLine("[bold]cbstat Settings[/]");
+            AnsiConsole.MarkupLine("[bold]CBStat Settings[/]");
             AnsiConsole.MarkupLine("[dim]───────────────────────────────────────[/]");
             AnsiConsole.MarkupLine("[dim]Use arrow keys to navigate, Enter to select[/]");
             AnsiConsole.WriteLine();
@@ -28,6 +28,7 @@ public class SettingsUI
             var enabledCount = _settingsService.Settings.Providers.Count(p => p.IsEnabled);
             var interval = _settingsService.Settings.RefreshIntervalSeconds;
             var displayMode = FormatDisplayMode(_settingsService.Settings.DisplayMode);
+            var dayStart = _settingsService.Settings.WorkDayStartHour;
 
             var choice = AnsiConsole.Prompt(
                 new SelectionPrompt<string>()
@@ -37,6 +38,7 @@ public class SettingsUI
                         $"Providers          [[{enabledCount}/3 enabled]]",
                         $"Refresh Interval   [[{FormatInterval(interval)}]]",
                         $"Display Mode       [[{displayMode}]]",
+                        $"Day Start          [[{dayStart:D2}:00]]",
                         $"Developer Mode     {devStatus}",
                         "───────────────────",
                         "[green]Save & Exit[/]",
@@ -54,6 +56,10 @@ public class SettingsUI
             else if (choice.StartsWith("Display Mode"))
             {
                 ConfigureDisplayMode();
+            }
+            else if (choice.StartsWith("Day Start"))
+            {
+                ConfigureDayStart();
             }
             else if (choice.StartsWith("Developer Mode"))
             {
@@ -191,6 +197,34 @@ public class SettingsUI
             return;
 
         _settingsService.Settings.DisplayMode = modes[choice];
+        AnsiConsole.MarkupLine($"[green]Set to: {choice}[/]");
+        Thread.Sleep(400);
+    }
+
+    private void ConfigureDayStart()
+    {
+        Console.Clear();
+        AnsiConsole.MarkupLine("[bold]Work Day Start Hour[/]");
+        AnsiConsole.MarkupLine("[dim]───────────────────────────────────────[/]");
+        AnsiConsole.MarkupLine("[dim]Hour when your \"work day\" starts for daily budget calculation[/]");
+        AnsiConsole.WriteLine();
+
+        var hours = new Dictionary<string, int> { [Back] = -1 };
+        for (var h = 0; h <= 23; h++)
+            hours[$"{h:D2}:00"] = h;
+
+        var current = _settingsService.Settings.WorkDayStartHour;
+
+        var choice = AnsiConsole.Prompt(
+            new SelectionPrompt<string>()
+                .Title($"Current: [yellow]{current:D2}:00[/]")
+                .HighlightStyle(Style.Parse("cyan"))
+                .AddChoices(hours.Keys));
+
+        if (choice == Back)
+            return;
+
+        _settingsService.Settings.WorkDayStartHour = hours[choice];
         AnsiConsole.MarkupLine($"[green]Set to: {choice}[/]");
         Thread.Sleep(400);
     }

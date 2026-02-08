@@ -128,11 +128,12 @@ while (true)
         Console.Clear();
 
         var displayMode = settings.Settings.DisplayMode;
-        await AnsiConsole.Live(BuildDisplay(currentData, refreshInterval, settings.Settings.DeveloperModeEnabled, isRefreshing, displayMode, version))
+        var workDayStartHour = settings.Settings.WorkDayStartHour;
+        await AnsiConsole.Live(BuildDisplay(currentData, refreshInterval, settings.Settings.DeveloperModeEnabled, isRefreshing, displayMode, version, workDayStartHour))
             .AutoClear(false)
             .StartAsync(async ctx =>
             {
-                ctx.UpdateTarget(BuildDisplay(currentData, refreshInterval, settings.Settings.DeveloperModeEnabled, false, displayMode, version));
+                ctx.UpdateTarget(BuildDisplay(currentData, refreshInterval, settings.Settings.DeveloperModeEnabled, false, displayMode, version, workDayStartHour));
                 ctx.Refresh();
 
                 while (!cts.Token.IsCancellationRequested)
@@ -152,7 +153,7 @@ while (true)
 
                         // Show refreshing indicator
                         isRefreshing = true;
-                        ctx.UpdateTarget(BuildDisplay(currentData, refreshInterval, settings.Settings.DeveloperModeEnabled, true, displayMode, version));
+                        ctx.UpdateTarget(BuildDisplay(currentData, refreshInterval, settings.Settings.DeveloperModeEnabled, true, displayMode, version, workDayStartHour));
                         ctx.Refresh();
 
                         // Fetch new data
@@ -161,7 +162,7 @@ while (true)
 
                         // Update display
                         isRefreshing = false;
-                        ctx.UpdateTarget(BuildDisplay(currentData, refreshInterval, settings.Settings.DeveloperModeEnabled, false, displayMode, version));
+                        ctx.UpdateTarget(BuildDisplay(currentData, refreshInterval, settings.Settings.DeveloperModeEnabled, false, displayMode, version, workDayStartHour));
                         ctx.Refresh();
                     }
                     catch (OperationCanceledException)
@@ -189,9 +190,10 @@ while (true)
 AnsiConsole.WriteLine();
 AnsiConsole.MarkupLine("[dim]Goodbye![/]");
 
-static IRenderable BuildDisplay(List<UsageData> data, TimeSpan refreshInterval, bool devMode, bool isRefreshing, DisplayMode displayMode, string version)
+static IRenderable BuildDisplay(List<UsageData> data, TimeSpan refreshInterval, bool devMode, bool isRefreshing, DisplayMode displayMode, string version, int workDayStartHour)
 {
     var renderer = new ConsoleRenderer();
+    renderer.SetWorkDayStartHour(workDayStartHour);
     var content = renderer.BuildDisplay(data, displayMode);
 
     var refreshIndicator = isRefreshing ? "[cyan]⟳[/]" : "";

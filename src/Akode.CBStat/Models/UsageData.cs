@@ -89,10 +89,10 @@ public record UsageWindow
     }
 
     /// <summary>
-    /// Computes remaining budget for the current user day (starting at 1:00 AM local time)
+    /// Computes remaining budget for the current user day (starting at workDayStartHour local time)
     /// so total usage stays on pace until reset.
     /// </summary>
-    public double? ComputeDailyBudget(DateTime? nowLocal = null)
+    public double? ComputeDailyBudget(int workDayStartHour = 1, DateTime? nowLocal = null)
     {
         if (ResetAt == null) return null;
         var now = nowLocal ?? DateTime.Now;
@@ -102,9 +102,9 @@ public record UsageWindow
         var remaining = 100.0 - Percent;
         if (remaining < 0) remaining = 0;
 
-        static DateTime GetUserDayStart(DateTime value)
+        DateTime GetUserDayStart(DateTime value)
         {
-            var dayStart = value.Date.AddHours(1);
+            var dayStart = value.Date.AddHours(workDayStartHour);
             return value < dayStart ? dayStart.AddDays(-1) : dayStart;
         }
 
@@ -137,13 +137,11 @@ public record UsageWindow
 
     /// <summary>
     /// Gets the daily budget text for display, e.g., "(14.5%)".
+    /// Uses default workDayStartHour=1. For custom hour, use ComputeDailyBudget directly.
     /// </summary>
-    public string DailyBudgetText
+    public string GetDailyBudgetText(int workDayStartHour = 1)
     {
-        get
-        {
-            var budget = ComputeDailyBudget();
-            return budget.HasValue ? $"({budget:F1}%)" : "";
-        }
+        var budget = ComputeDailyBudget(workDayStartHour);
+        return budget.HasValue ? $"({budget:F1}%)" : "";
     }
 }
