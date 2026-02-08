@@ -221,11 +221,13 @@ static IRenderable BuildDisplay(List<UsageData> data, TimeSpan refreshInterval, 
     }
     else
     {
-        // Vertical mode: single status line
+        // Vertical mode: header + content + status line
+        var header = new Markup($"[bold]CBStat[/] [dim]v{version}[/] - AI Provider Usage Monitor\n");
         var devIndicator = devMode ? "[yellow]DEV[/] | " : "";
         var statusLine = $"{refreshIndicator}{devIndicator}Updated: {DateTime.Now:HH:mm:ss} | Refresh: {refreshInterval.TotalSeconds}s | [dim]Ctrl+O[/]=options [dim]Ctrl+C[/]=quit";
 
         return new Rows(
+            header,
             content,
             new Markup($"\n[dim]{statusLine}[/]")
         );
