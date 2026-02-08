@@ -124,12 +124,15 @@ while (true)
         var isRefreshing = false;
         var lastUpdate = DateTime.Now;
 
+        // Clear screen before Live display to remove loading header
+        Console.Clear();
+
         var displayMode = settings.Settings.DisplayMode;
-        await AnsiConsole.Live(BuildDisplay(currentData, refreshInterval, settings.Settings.DeveloperModeEnabled, isRefreshing, displayMode))
+        await AnsiConsole.Live(BuildDisplay(currentData, refreshInterval, settings.Settings.DeveloperModeEnabled, isRefreshing, displayMode, version))
             .AutoClear(false)
             .StartAsync(async ctx =>
             {
-                ctx.UpdateTarget(BuildDisplay(currentData, refreshInterval, settings.Settings.DeveloperModeEnabled, false, displayMode));
+                ctx.UpdateTarget(BuildDisplay(currentData, refreshInterval, settings.Settings.DeveloperModeEnabled, false, displayMode, version));
                 ctx.Refresh();
 
                 while (!cts.Token.IsCancellationRequested)
@@ -149,7 +152,7 @@ while (true)
 
                         // Show refreshing indicator
                         isRefreshing = true;
-                        ctx.UpdateTarget(BuildDisplay(currentData, refreshInterval, settings.Settings.DeveloperModeEnabled, true, displayMode));
+                        ctx.UpdateTarget(BuildDisplay(currentData, refreshInterval, settings.Settings.DeveloperModeEnabled, true, displayMode, version));
                         ctx.Refresh();
 
                         // Fetch new data
@@ -158,7 +161,7 @@ while (true)
 
                         // Update display
                         isRefreshing = false;
-                        ctx.UpdateTarget(BuildDisplay(currentData, refreshInterval, settings.Settings.DeveloperModeEnabled, false, displayMode));
+                        ctx.UpdateTarget(BuildDisplay(currentData, refreshInterval, settings.Settings.DeveloperModeEnabled, false, displayMode, version));
                         ctx.Refresh();
                     }
                     catch (OperationCanceledException)
@@ -186,7 +189,7 @@ while (true)
 AnsiConsole.WriteLine();
 AnsiConsole.MarkupLine("[dim]Goodbye![/]");
 
-static IRenderable BuildDisplay(List<UsageData> data, TimeSpan refreshInterval, bool devMode, bool isRefreshing, DisplayMode displayMode)
+static IRenderable BuildDisplay(List<UsageData> data, TimeSpan refreshInterval, bool devMode, bool isRefreshing, DisplayMode displayMode, string version)
 {
     var renderer = new ConsoleRenderer();
     var content = renderer.BuildDisplay(data, displayMode);
@@ -195,9 +198,9 @@ static IRenderable BuildDisplay(List<UsageData> data, TimeSpan refreshInterval, 
 
     if (displayMode == DisplayMode.Compact)
     {
-        // Compact header: CBStat + Today
+        // Compact header: CBStat + version + Today
         var header = new Rows(
-            new Markup("[bold]CBStat[/]"),
+            new Markup($"[bold]CBStat[/] [dim]v{version}[/]"),
             new Markup($"[dim]Today: {DateTime.Now:ddd}[/]\n")
         );
 
