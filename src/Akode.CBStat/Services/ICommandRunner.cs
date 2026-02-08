@@ -1,4 +1,4 @@
-namespace CLIStat.Services;
+namespace Akode.CBStat.Services;
 
 public interface ICommandRunner
 {

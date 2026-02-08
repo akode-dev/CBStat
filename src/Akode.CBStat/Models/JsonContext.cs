@@ -1,6 +1,6 @@
 using System.Text.Json.Serialization;
 
-namespace CLIStat.Models;
+namespace Akode.CBStat.Models;
 
 [JsonSourceGenerationOptions(
     PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase,

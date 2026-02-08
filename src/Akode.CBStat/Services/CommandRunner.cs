@@ -2,7 +2,7 @@ using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Text;
 
-namespace CLIStat.Services;
+namespace Akode.CBStat.Services;
 
 public class CommandRunner : ICommandRunner
 {

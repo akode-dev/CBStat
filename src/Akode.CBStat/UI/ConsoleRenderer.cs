@@ -1,8 +1,8 @@
-using CLIStat.Models;
+using Akode.CBStat.Models;
 using Spectre.Console;
 using Spectre.Console.Rendering;
 
-namespace CLIStat.UI;
+namespace Akode.CBStat.UI;
 
 public class ConsoleRenderer
 {

@@ -1,7 +1,7 @@
 using System.Text.Json;
-using CLIStat.Models;
+using Akode.CBStat.Models;
 
-namespace CLIStat.Services;
+namespace Akode.CBStat.Services;
 
 public class CodexBarService
 {

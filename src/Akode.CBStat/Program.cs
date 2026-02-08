@@ -1,5 +1,5 @@
-using CLIStat.Services;
-using CLIStat.UI;
+using Akode.CBStat.Services;
+using Akode.CBStat.UI;
 using Spectre.Console;
 
 var refreshInterval = TimeSpan.FromSeconds(120);
@@ -15,7 +15,7 @@ var runner = new CommandRunner();
 var service = new CodexBarService(runner);
 var renderer = new ConsoleRenderer();
 
-AnsiConsole.MarkupLine("[dim]CLIStat - AI Provider Usage Monitor[/]");
+AnsiConsole.MarkupLine("[dim]cbstat - AI Provider Usage Monitor[/]");
 AnsiConsole.MarkupLine("[dim]Press Ctrl+C to exit[/]");
 AnsiConsole.WriteLine();
 

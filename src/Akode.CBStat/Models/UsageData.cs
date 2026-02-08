@@ -1,4 +1,4 @@
-namespace CLIStat.Models;
+namespace Akode.CBStat.Models;
 
 /// <summary>
 /// Represents usage data for a provider.
