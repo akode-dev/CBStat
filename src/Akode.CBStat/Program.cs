@@ -41,13 +41,15 @@ while (true)
 
     var refreshInterval = TimeSpan.FromSeconds(settings.Settings.RefreshIntervalSeconds);
 
-    // Header
+    // Header (only for vertical mode, compact has its own)
     Console.Clear();
-    AnsiConsole.MarkupLine("[bold]cbstat[/] - AI Provider Usage Monitor");
-    if (settings.Settings.DeveloperModeEnabled)
-        AnsiConsole.MarkupLine("[yellow]Developer mode: using sample data[/]");
-    AnsiConsole.MarkupLine("[dim]Press [bold]O[/] for settings, [bold]Q[/] to quit[/]");
-    AnsiConsole.WriteLine();
+    if (settings.Settings.DisplayMode == DisplayMode.Vertical)
+    {
+        AnsiConsole.MarkupLine("[bold]CBStat[/] - AI Provider Usage Monitor");
+        if (settings.Settings.DeveloperModeEnabled)
+            AnsiConsole.MarkupLine("[yellow]Developer mode: using sample data[/]");
+        AnsiConsole.WriteLine();
+    }
 
     // Initial load with spinner
     List<UsageData>? initialData = null;
@@ -182,8 +184,11 @@ static IRenderable BuildDisplay(List<UsageData> data, TimeSpan refreshInterval, 
 
     if (displayMode == DisplayMode.Compact)
     {
-        // Compact header: Today: Fr
-        var todayHeader = new Markup($"[dim]Today: {DateTime.Now:ddd}[/]\n");
+        // Compact header: CBStat + Today
+        var header = new Rows(
+            new Markup("[bold]CBStat[/]"),
+            new Markup($"[dim]Today: {DateTime.Now:ddd}[/]\n")
+        );
 
         // Compact status: multiple short lines
         var lines = new List<string>();
@@ -192,10 +197,10 @@ static IRenderable BuildDisplay(List<UsageData> data, TimeSpan refreshInterval, 
         lines.Add($" UPD: {DateTime.Now:HH:mm}");
         lines.Add($"RFSH: {refreshInterval.TotalSeconds}s");
         lines.Add(" Opt: ^O");
-        lines.Add(" Exit: ^Q");
+        lines.Add("Exit: ^Q");
 
         return new Rows(
-            todayHeader,
+            header,
             content,
             new Markup($"\n[dim]{string.Join("\n", lines)}[/]")
         );
@@ -204,7 +209,7 @@ static IRenderable BuildDisplay(List<UsageData> data, TimeSpan refreshInterval, 
     {
         // Vertical mode: single status line
         var devIndicator = devMode ? "[yellow]DEV[/] | " : "";
-        var statusLine = $"{refreshIndicator}{devIndicator}Updated: {DateTime.Now:HH:mm:ss} | Refresh: {refreshInterval.TotalSeconds}s | [dim]O[/]=settings [dim]Q[/]=quit";
+        var statusLine = $"{refreshIndicator}{devIndicator}Updated: {DateTime.Now:HH:mm:ss} | Refresh: {refreshInterval.TotalSeconds}s | [dim]^O[/]=settings [dim]^Q[/]=quit";
 
         return new Rows(
             content,
@@ -220,12 +225,15 @@ static void MonitorKeys(CancellationToken ct, Action onSettings, Action onQuit)
         if (Console.KeyAvailable)
         {
             var key = Console.ReadKey(intercept: true);
+            var isCtrl = (key.Modifiers & ConsoleModifiers.Control) != 0;
 
+            // Ctrl+O or just O for settings
             if (key.Key == ConsoleKey.O)
             {
                 onSettings();
                 return;
             }
+            // Ctrl+Q or just Q for quit
             else if (key.Key == ConsoleKey.Q)
             {
                 onQuit();
@@ -250,8 +258,8 @@ static void ShowHelp()
     AnsiConsole.MarkupLine("  -h, --help                 Show this help");
     AnsiConsole.WriteLine();
     AnsiConsole.MarkupLine("[bold]Keyboard shortcuts:[/]");
-    AnsiConsole.MarkupLine("  O                          Open settings");
-    AnsiConsole.MarkupLine("  Q                          Quit");
+    AnsiConsole.MarkupLine("  Ctrl+O                     Open settings");
+    AnsiConsole.MarkupLine("  Ctrl+Q                     Quit");
     AnsiConsole.WriteLine();
     AnsiConsole.MarkupLine("[bold]Examples:[/]");
     AnsiConsole.MarkupLine("  cbstat                          # Monitor all providers");
