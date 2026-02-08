@@ -1,8 +1,14 @@
+using System.Reflection;
 using Akode.CBStat.Models;
 using Akode.CBStat.Services;
 using Akode.CBStat.UI;
 using Spectre.Console;
 using Spectre.Console.Rendering;
+
+var version = Assembly.GetExecutingAssembly()
+    .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion
+    ?? Assembly.GetExecutingAssembly().GetName().Version?.ToString()
+    ?? "1.0.0";
 
 // Handle --help
 if (args.Contains("--help") || args.Contains("-h"))
@@ -41,15 +47,20 @@ while (true)
 
     var refreshInterval = TimeSpan.FromSeconds(settings.Settings.RefreshIntervalSeconds);
 
-    // Header (only for vertical mode, compact has its own)
+    // Header with version (always shown during loading)
     Console.Clear();
-    if (settings.Settings.DisplayMode == DisplayMode.Vertical)
+    var isCompact = settings.Settings.DisplayMode == DisplayMode.Compact;
+    if (isCompact)
     {
-        AnsiConsole.MarkupLine("[bold]CBStat[/] - AI Provider Usage Monitor");
+        AnsiConsole.MarkupLine($"[bold]CBStat[/] [dim]v{version}[/]");
+    }
+    else
+    {
+        AnsiConsole.MarkupLine($"[bold]CBStat[/] [dim]v{version}[/] - AI Provider Usage Monitor");
         if (settings.Settings.DeveloperModeEnabled)
             AnsiConsole.MarkupLine("[yellow]Developer mode: using sample data[/]");
-        AnsiConsole.WriteLine();
     }
+    AnsiConsole.WriteLine();
 
     // Initial load with spinner
     List<UsageData>? initialData = null;
