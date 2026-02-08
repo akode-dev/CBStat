@@ -10,14 +10,12 @@ var version = Assembly.GetExecutingAssembly()
     ?? Assembly.GetExecutingAssembly().GetName().Version?.ToString()
     ?? "1.0.0";
 
-// Handle --help
 if (args.Contains("--help") || args.Contains("-h"))
 {
     ShowHelp();
     return;
 }
 
-// Initialize services
 var settings = new SettingsService();
 await settings.LoadAsync();
 settings.ApplyCommandLineArgs(args);
@@ -31,23 +29,20 @@ Console.CancelKeyPress += (_, e) =>
     cts.Cancel();
 };
 
-var runner = new CommandRunner();
+var runner = new CommandRunner(settings.Settings.CommandTimeoutSeconds);
 var service = new CodexBarService(runner, settings);
 var renderer = new ConsoleRenderer();
 var settingsUI = new SettingsUI(settings);
 
-// Main loop (can restart after settings)
 while (true)
 {
     cts = new CancellationTokenSource();
     openSettings = false;
 
-    // Start key monitoring
-    _ = Task.Run(() => MonitorKeys(cts.Token, () => { openSettings = true; cts.Cancel(); }, () => cts.Cancel()));
+    _ = Task.Run(() => MonitorKeys(cts.Token, () => { openSettings = true; cts.Cancel(); }));
 
     var refreshInterval = TimeSpan.FromSeconds(settings.Settings.RefreshIntervalSeconds);
 
-    // Header with version (always shown during loading)
     Console.Clear();
     var isCompact = settings.Settings.DisplayMode == DisplayMode.Compact;
     if (isCompact)
@@ -62,7 +57,6 @@ while (true)
     }
     AnsiConsole.WriteLine();
 
-    // Initial load with spinner
     List<UsageData>? initialData = null;
     await AnsiConsole.Status()
         .AutoRefresh(true)
@@ -81,15 +75,22 @@ while (true)
             };
 
             var messageIndex = 0;
+            using var messageCts = CancellationTokenSource.CreateLinkedTokenSource(cts.Token);
             var messageTask = Task.Run(async () =>
             {
-                while (initialData == null && !cts.Token.IsCancellationRequested)
+                try
                 {
-                    await Task.Delay(1500);
-                    messageIndex = (messageIndex + 1) % messages.Length;
-                    ctx.Status(messages[messageIndex]);
+                    while (!messageCts.Token.IsCancellationRequested)
+                    {
+                        await Task.Delay(1500, messageCts.Token);
+                        messageIndex = (messageIndex + 1) % messages.Length;
+                        ctx.Status(messages[messageIndex]);
+                    }
                 }
-            });
+                catch (OperationCanceledException)
+                {
+                }
+            }, messageCts.Token);
 
             try
             {
@@ -97,7 +98,17 @@ while (true)
             }
             catch (OperationCanceledException)
             {
-                // Cancelled during initial load
+            }
+            finally
+            {
+                messageCts.Cancel();
+                try
+                {
+                    await messageTask;
+                }
+                catch (OperationCanceledException)
+                {
+                }
             }
         });
 
@@ -111,58 +122,43 @@ while (true)
         if (openSettings)
         {
             await settingsUI.ShowAsync();
+            runner = new CommandRunner(settings.Settings.CommandTimeoutSeconds);
             service = new CodexBarService(runner, settings);
             continue;
         }
         break;
     }
 
-    // Main display loop
     try
     {
         var currentData = initialData;
         var isRefreshing = false;
-        var lastUpdate = DateTime.Now;
 
-        // Clear screen before Live display to remove loading header
         Console.Clear();
 
         var displayMode = settings.Settings.DisplayMode;
         var workDayStartHour = settings.Settings.WorkDayStartHour;
-        await AnsiConsole.Live(BuildDisplay(currentData, refreshInterval, settings.Settings.DeveloperModeEnabled, isRefreshing, displayMode, version, workDayStartHour))
+        await AnsiConsole.Live(BuildDisplay(renderer, currentData, refreshInterval, settings.Settings.DeveloperModeEnabled, isRefreshing, displayMode, version, workDayStartHour))
             .AutoClear(false)
             .StartAsync(async ctx =>
             {
-                ctx.UpdateTarget(BuildDisplay(currentData, refreshInterval, settings.Settings.DeveloperModeEnabled, false, displayMode, version, workDayStartHour));
+                ctx.UpdateTarget(BuildDisplay(renderer, currentData, refreshInterval, settings.Settings.DeveloperModeEnabled, false, displayMode, version, workDayStartHour));
                 ctx.Refresh();
 
                 while (!cts.Token.IsCancellationRequested)
                 {
                     try
                     {
-                        // Wait for refresh interval, checking frequently for cancellation
-                        var elapsed = TimeSpan.Zero;
-                        while (elapsed < refreshInterval && !cts.Token.IsCancellationRequested)
-                        {
-                            await Task.Delay(100, cts.Token);
-                            elapsed += TimeSpan.FromMilliseconds(100);
-                        }
+                        await Task.Delay(refreshInterval, cts.Token);
 
-                        if (cts.Token.IsCancellationRequested)
-                            break;
-
-                        // Show refreshing indicator
                         isRefreshing = true;
-                        ctx.UpdateTarget(BuildDisplay(currentData, refreshInterval, settings.Settings.DeveloperModeEnabled, true, displayMode, version, workDayStartHour));
+                        ctx.UpdateTarget(BuildDisplay(renderer, currentData, refreshInterval, settings.Settings.DeveloperModeEnabled, true, displayMode, version, workDayStartHour));
                         ctx.Refresh();
 
-                        // Fetch new data
                         currentData = await service.GetAllUsageAsync(cts.Token);
-                        lastUpdate = DateTime.Now;
 
-                        // Update display
                         isRefreshing = false;
-                        ctx.UpdateTarget(BuildDisplay(currentData, refreshInterval, settings.Settings.DeveloperModeEnabled, false, displayMode, version, workDayStartHour));
+                        ctx.UpdateTarget(BuildDisplay(renderer, currentData, refreshInterval, settings.Settings.DeveloperModeEnabled, false, displayMode, version, workDayStartHour));
                         ctx.Refresh();
                     }
                     catch (OperationCanceledException)
@@ -174,12 +170,12 @@ while (true)
     }
     catch (OperationCanceledException)
     {
-        // Normal interruption
     }
 
     if (openSettings)
     {
         await settingsUI.ShowAsync();
+        runner = new CommandRunner(settings.Settings.CommandTimeoutSeconds);
         service = new CodexBarService(runner, settings);
         continue;
     }
@@ -190,71 +186,63 @@ while (true)
 AnsiConsole.WriteLine();
 AnsiConsole.MarkupLine("[dim]Goodbye![/]");
 
-static IRenderable BuildDisplay(List<UsageData> data, TimeSpan refreshInterval, bool devMode, bool isRefreshing, DisplayMode displayMode, string version, int workDayStartHour)
+static IRenderable BuildDisplay(
+    ConsoleRenderer renderer,
+    IReadOnlyList<UsageData> data,
+    TimeSpan refreshInterval,
+    bool devMode,
+    bool isRefreshing,
+    DisplayMode displayMode,
+    string version,
+    int workDayStartHour)
 {
-    var renderer = new ConsoleRenderer();
     renderer.SetWorkDayStartHour(workDayStartHour);
     var content = renderer.BuildDisplay(data, displayMode);
+    var now = DateTime.Now;
 
-    var refreshIndicator = isRefreshing ? "[cyan]⟳[/]" : "";
+    var refreshIndicator = isRefreshing ? "[cyan]⟳[/]" : string.Empty;
+    var refreshSeconds = (int)refreshInterval.TotalSeconds;
 
     if (displayMode == DisplayMode.Compact)
     {
-        // Compact header: CBStat + version + Today
-        var header = new Rows(
-            new Markup($"[bold]CBStat[/] [dim]v{version}[/]"),
-            new Markup($"[dim]Today: {DateTime.Now:ddd}[/]\n")
-        );
-
-        // Compact status: multiple short lines
-        var lines = new List<string>();
-        if (!string.IsNullOrEmpty(refreshIndicator)) lines.Add(refreshIndicator);
-        if (devMode) lines.Add("[yellow]DEV[/]");
-        lines.Add($" UPD: {DateTime.Now:HH:mm}");
-        lines.Add($"RFSH: {refreshInterval.TotalSeconds}s");
-        lines.Add(" Opt: Ctrl+O");
+        var lines = new List<string>(6);
+        if (!string.IsNullOrEmpty(refreshIndicator))
+            lines.Add(refreshIndicator);
+        if (devMode)
+            lines.Add("[yellow]DEV[/]");
+        lines.Add($" UPD: {now:HH:mm}");
+        lines.Add($"RFSH: {refreshSeconds}s");
+        lines.Add(" Opt: O/Ctrl+O");
         lines.Add("Exit: Ctrl+C");
 
         return new Rows(
-            header,
+            new Markup($"[bold]CBStat[/] [dim]v{version}[/]"),
+            new Markup($"[dim]Today: {now:ddd}[/]\n"),
             content,
             new Markup($"\n[dim]{string.Join("\n", lines)}[/]")
         );
     }
-    else
-    {
-        // Vertical mode: header + content + status line
-        var header = new Markup($"[bold]CBStat[/] [dim]v{version}[/] - AI Provider Usage Monitor\n");
-        var devIndicator = devMode ? "[yellow]DEV[/] | " : "";
-        var statusLine = $"{refreshIndicator}{devIndicator}Updated: {DateTime.Now:HH:mm:ss} | Refresh: {refreshInterval.TotalSeconds}s | [dim]Ctrl+O[/]=options [dim]Ctrl+C[/]=quit";
 
-        return new Rows(
-            header,
-            content,
-            new Markup($"\n[dim]{statusLine}[/]")
-        );
-    }
+    var devIndicator = devMode ? "[yellow]DEV[/] | " : string.Empty;
+    var statusLine = $"{refreshIndicator}{devIndicator}Updated: {now:HH:mm:ss} | Refresh: {refreshSeconds}s | [dim]O[/]=settings [dim]Ctrl+C[/]=quit";
+
+    return new Rows(
+        new Markup($"[bold]CBStat[/] [dim]v{version}[/] - AI Provider Usage Monitor\n"),
+        content,
+        new Markup($"\n[dim]{statusLine}[/]")
+    );
 }
 
-static void MonitorKeys(CancellationToken ct, Action onSettings, Action onQuit)
+static void MonitorKeys(CancellationToken ct, Action onSettings)
 {
     while (!ct.IsCancellationRequested)
     {
         if (Console.KeyAvailable)
         {
             var key = Console.ReadKey(intercept: true);
-            var isCtrl = (key.Modifiers & ConsoleModifiers.Control) != 0;
-
-            // Ctrl+O or just O for settings
             if (key.Key == ConsoleKey.O)
             {
                 onSettings();
-                return;
-            }
-            // Ctrl+C or just Q for quit
-            else if (key.Key == ConsoleKey.Q)
-            {
-                onQuit();
                 return;
             }
         }
@@ -276,7 +264,7 @@ static void ShowHelp()
     AnsiConsole.MarkupLine("  -h, --help                 Show this help");
     AnsiConsole.WriteLine();
     AnsiConsole.MarkupLine("[bold]Keyboard shortcuts:[/]");
-    AnsiConsole.MarkupLine("  Ctrl+O                     Options");
+    AnsiConsole.MarkupLine("  O or Ctrl+O                Open settings");
     AnsiConsole.MarkupLine("  Ctrl+C                     Quit");
     AnsiConsole.WriteLine();
     AnsiConsole.MarkupLine("[bold]Examples:[/]");

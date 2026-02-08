@@ -206,7 +206,7 @@ public class SettingsUI
         Console.Clear();
         AnsiConsole.MarkupLine("[bold]Work Day Start Hour[/]");
         AnsiConsole.MarkupLine("[dim]───────────────────────────────────────[/]");
-        AnsiConsole.MarkupLine("[dim]Hour when your \"work day\" starts for daily budget calculation[/]");
+        AnsiConsole.MarkupLine("[dim]Local hour when your \"work day\" starts for daily budget calculation[/]");
         AnsiConsole.WriteLine();
 
         var hours = new Dictionary<string, int> { [Back] = -1 };

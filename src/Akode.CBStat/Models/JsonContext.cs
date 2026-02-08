@@ -16,18 +16,15 @@ public partial class JsonContext : JsonSerializerContext
 public record UsageDataDto
 {
     public string Provider { get; init; } = string.Empty;
-    public string? Source { get; init; }
     public UsageDto? Usage { get; init; }
     public string? Error { get; init; }
 
     public UsageData ToUsageData() => new()
     {
         Provider = Provider,
-        Plan = Usage?.LoginMethod,
         Session = Usage?.Primary?.ToUsageWindow(),
         Weekly = Usage?.Secondary?.ToUsageWindow(),
         Tertiary = Usage?.Tertiary?.ToUsageWindow(),
-        Status = Source,
         Error = Error,
         FetchedAt = DateTime.UtcNow
     };
@@ -35,11 +32,9 @@ public record UsageDataDto
 
 public record UsageDto
 {
-    public string? LoginMethod { get; init; }
     public UsageWindowDto? Primary { get; init; }
     public UsageWindowDto? Secondary { get; init; }
     public UsageWindowDto? Tertiary { get; init; }
-    public DateTime? UpdatedAt { get; init; }
 }
 
 public record UsageWindowDto

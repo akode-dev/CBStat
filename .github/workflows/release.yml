@@ -41,6 +41,15 @@ jobs:
       - name: Publish
         run: dotnet publish src/Akode.CBStat -c Release -r ${{ matrix.rid }} -o publish -p:Version=${{ steps.version.outputs.VERSION }}
 
+      - name: Collect Windows EXE
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: |
+          if (!(Test-Path "publish\cbstat.exe")) {
+            throw "Expected file publish\\cbstat.exe was not found."
+          }
+          Copy-Item "publish\cbstat.exe" "cbstat-win-x64.exe"
+
       - name: Package (Windows)
         if: matrix.os == 'windows-latest'
         run: Compress-Archive -Path publish/* -DestinationPath ${{ matrix.artifact }}
@@ -54,6 +63,13 @@ jobs:
         with:
           name: ${{ matrix.artifact }}
           path: ${{ matrix.artifact }}
+
+      - name: Upload Windows EXE artifact
+        if: matrix.os == 'windows-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: cbstat-win-x64.exe
+          path: cbstat-win-x64.exe
 
   release:
     needs: build

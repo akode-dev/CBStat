@@ -1,47 +1,78 @@
 # cbstat
 
-Cross-platform console application for monitoring AI provider usage (Claude, Codex, Gemini).
+`cbstat` is a cross-platform terminal app that helps you monitor AI provider usage and avoid accidental overuse.
 
-Built with .NET 10 and [Spectre.Console](https://spectreconsole.net/).
+It supports Claude, Codex, and Gemini, and renders usage in a clean live view using `Spectre.Console`.
 
-## Features
+## Why it is useful
 
-- Real-time usage monitoring for Claude, Codex, and Gemini
-- Daily budget calculation (remaining quota for today)
-- Two display modes: Vertical (panels) and Compact (narrow windows)
-- Auto-refresh with configurable interval
-- Color-coded progress bars (green < 50%, yellow 50-80%, red > 80%)
-- Interactive settings menu (press O)
-- Cross-platform: Windows, Linux, macOS
+When you work for many hours, it is easy to spend too much quota early and get blocked later.
+
+`cbstat` shows:
+- current usage percent for each window
+- your safe daily pace in parentheses
+- color risk level so you can spot overload early
+
+## What numbers and colors mean
+
+Example line:
+
+```text
+W 23% (14.5%) 12:00 Fr
+```
+
+- `23%` is current usage in this provider window.
+- `(14.5%)` is how much you can still safely spend today to stay on pace.
+- Colors for the main percent:
+1. Green: under 50%
+2. Yellow: 50-79%
+3. Red: 80% and above (higher risk of overspending)
+
+## Screenshots
+
+Vertical mode:
+
+![Vertical mode](docs/img/normal_view.png)
+
+Compact mode:
+
+![Compact mode](docs/img/compact_view.png)
+
+Compact settings:
+
+![Compact settings](docs/img/compact_settings.png)
+
+Windows + WSL setup example:
+
+![Multi-terminal WSL example](docs/img/multiterminal_example_wsl.png)
 
 ## Requirements
 
 - [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)
 - [CodexBar CLI](https://github.com/Finesssee/Win-CodexBar) installed and configured
 
-### Windows Setup
+## Privacy and safety
 
-On Windows, CodexBar must be installed inside WSL. cbstat will automatically call WSL to execute CodexBar commands.
+`cbstat` works on your computer and has no cloud backend.
 
-1. Install WSL: `wsl --install`
-2. Inside WSL, install CodexBar following [instructions](https://github.com/Finesssee/Win-CodexBar#installation)
-3. Run cbstat from Windows - it will use WSL automatically
+- No telemetry
+- No tracking
+- No hidden uploads to developer servers
+- Settings are stored locally on your machine
 
-### Linux / macOS Setup
+The app reads usage data through your local `codexbar` command and only displays it in your terminal.
 
-Install CodexBar directly:
-```bash
-# Follow installation instructions at:
-# https://github.com/Finesssee/Win-CodexBar#installation
-```
+Short version: this is a local monitoring tool, not a virus, and it does not "leak" your usage data to us.
 
-## Installation
+## Install
 
-### From Release
+### Option 1: Download release binary
 
-Download the latest release for your platform from [Releases](https://github.com/akode-dev/CBStat/releases).
+Get the latest binary from:
 
-### From Source
+[https://github.com/akode-dev/CBStat/releases](https://github.com/akode-dev/CBStat/releases)
+
+### Option 2: Build from source
 
 ```bash
 git clone https://github.com/akode-dev/CBStat.git
@@ -49,19 +80,40 @@ cd CBStat
 dotnet build -c Release
 ```
 
+## Provider setup
+
+### Windows
+
+On Windows, CodexBar should run inside WSL. `cbstat` calls WSL automatically.
+
+1. Install WSL: `wsl --install`
+2. Inside WSL, install CodexBar:  
+   [https://github.com/Finesssee/Win-CodexBar#installation](https://github.com/Finesssee/Win-CodexBar#installation)
+3. Run `cbstat` from Windows terminal
+
+### Linux / macOS
+
+Install CodexBar directly with the same guide:
+
+[https://github.com/Finesssee/Win-CodexBar#installation](https://github.com/Finesssee/Win-CodexBar#installation)
+
 ## Usage
 
-```bash
-# Run with default settings
-cbstat
+Run:
 
-# Or from source
+```bash
+cbstat
+```
+
+Or from source:
+
+```bash
 dotnet run --project src/Akode.CBStat
 ```
 
-### Command Line Options
+Command line options:
 
-```
+```text
 cbstat [options]
 
 Options:
@@ -72,75 +124,58 @@ Options:
   -h, --help                 Show help
 ```
 
-### Keyboard Shortcuts
-
-| Key | Action |
-|-----|--------|
-| O | Open settings |
-| Q | Quit |
-| Ctrl+C | Force quit |
-
-## Display Modes
-
-### Vertical Mode (default)
-```
-╭─ Claude ─────────────────────────────╮
-│ Session  ████████████░░░░░░░░  60%   │
-│ Weekly   █████░░░░░░░░░░░░░░░  25%   │
-│ Reset: 2h 15m                        │
-╰──────────────────────────────────────╯
-```
-
-### Compact Mode (for narrow windows)
-```
-Today: Fr
-
-Claude
-S 60%(40.0) 19:00
-W 25%(12.5) 12:00 Fr
-
-Codex
-S 17%(83.0) 15:50
-W 26%(11.5) 12:30 Fr
-
-UPD: 14:16
-RFSH: 120s
-Opt: ^O
-Exit: ^Q
-```
-
-## Building
+Examples:
 
 ```bash
-# Debug build
+cbstat -i 60
+cbstat -p claude,codex
+cbstat --dev
+```
+
+Keyboard shortcuts:
+
+1. `O` or `Ctrl+O`: open settings
+2. `Ctrl+C`: quit
+
+## Day Start and daily pacing
+
+Daily pacing uses your **local computer time**.
+
+Default day start is **01:00** local time.  
+You can change it in Settings -> `Day Start`.
+
+This matters because your "(daily pace)" value depends on where your personal day boundary starts.
+
+## Real-life example
+
+You work from 09:00 to 19:00 and usually do most heavy tasks in the morning.
+
+At 10:00 you see:
+
+```text
+W 52% (6.0%)
+```
+
+This means:
+- You already used 52% of the window.
+- To stay safe, today you should spend only about 6% more.
+
+So you can switch afternoon work to lighter tasks (reviews, refactoring, docs), and keep heavy model usage for tomorrow after reset/day rollover.
+
+## Build and test
+
+```bash
 dotnet build CBStat.slnx
-
-# Release build
-dotnet build CBStat.slnx -c Release
-
-# Run tests
 dotnet test CBStat.slnx
+```
 
-# Publish for specific platform
+Publish examples:
+
+```bash
 dotnet publish src/Akode.CBStat -c Release -r win-x64 --self-contained
 dotnet publish src/Akode.CBStat -c Release -r linux-x64 --self-contained
 dotnet publish src/Akode.CBStat -c Release -r osx-x64 --self-contained
 dotnet publish src/Akode.CBStat -c Release -r osx-arm64 --self-contained
-```
-
-## Project Structure
-
-```
-cbstat/
-├── CBStat.slnx
-├── README.md
-├── src/
-│   └── Akode.CBStat/
-│       ├── Models/       # Data models
-│       ├── Services/     # Business logic
-│       └── UI/           # Console rendering
-└── tests/
-    └── Akode.CBStat.Tests/
 ```
 
 ## License

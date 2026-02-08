@@ -52,6 +52,4 @@ public static class ProviderConstants
             _ => throw new InvalidOperationException($"Unhandled provider: {normalized}")
         };
     }
-
-    public static IReadOnlyList<string> GetDefaultProviders() => ["claude", "codex", "gemini"];
 }

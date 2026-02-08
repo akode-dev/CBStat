@@ -6,7 +6,12 @@ namespace Akode.CBStat.Services;
 
 public class CommandRunner : ICommandRunner
 {
-    private readonly TimeSpan _timeout = TimeSpan.FromSeconds(30);
+    private readonly TimeSpan _timeout;
+
+    public CommandRunner(int timeoutSeconds = 30)
+    {
+        _timeout = TimeSpan.FromSeconds(Math.Max(1, timeoutSeconds));
+    }
 
     public async Task<CommandResult> ExecuteAsync(string command, CancellationToken ct = default)
     {

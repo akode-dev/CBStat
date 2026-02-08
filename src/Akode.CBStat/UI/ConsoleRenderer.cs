@@ -8,29 +8,10 @@ public class ConsoleRenderer
 {
     private int _workDayStartHour = 1;
 
-    public void SetWorkDayStartHour(int hour)
-    {
-        _workDayStartHour = Math.Clamp(hour, 0, 23);
-    }
+    public void SetWorkDayStartHour(int hour) => _workDayStartHour = Math.Clamp(hour, 0, 23);
 
-    public IRenderable BuildDisplay(IReadOnlyList<UsageData> data, DisplayMode mode)
-    {
-        return mode switch
-        {
-            DisplayMode.Compact => BuildCompactDisplay(data),
-            _ => BuildVerticalDisplay(data)
-        };
-    }
-
-    // Legacy method for backward compatibility
-    public Table BuildTable(IReadOnlyList<UsageData> data) => BuildVerticalTable(data);
-
-    #region Vertical Mode (default)
-
-    private IRenderable BuildVerticalDisplay(IReadOnlyList<UsageData> data)
-    {
-        return BuildVerticalTable(data);
-    }
+    public IRenderable BuildDisplay(IReadOnlyList<UsageData> data, DisplayMode mode) =>
+        mode == DisplayMode.Compact ? BuildCompactDisplay(data) : BuildVerticalTable(data);
 
     private Table BuildVerticalTable(IReadOnlyList<UsageData> data)
     {
@@ -78,7 +59,6 @@ public class ConsoleRenderer
                 rows.Add(BuildProgressRow(data.TertiaryLabel, data.Tertiary));
             }
 
-            // Show reset time from the first available window
             var resetWindow = data.Session ?? data.Weekly ?? data.Tertiary;
             if (resetWindow != null)
             {
@@ -113,7 +93,7 @@ public class ConsoleRenderer
     {
         var percent = window.Percent;
         var color = GetPercentColor(percent);
-        var barWidth = 20;
+        const int barWidth = 20;
         var filledWidth = (int)(barWidth * percent / 100);
         var emptyWidth = barWidth - filledWidth;
 
@@ -124,10 +104,6 @@ public class ConsoleRenderer
         return new Markup($"{label,-8} [{color}]{bar}[/] {percent,3:F0}%{budgetPart}");
     }
 
-    #endregion
-
-    #region Compact Mode (narrow vertical window)
-
     private IRenderable BuildCompactDisplay(IReadOnlyList<UsageData> data)
     {
         var rows = new List<IRenderable>();
@@ -135,7 +111,7 @@ public class ConsoleRenderer
         foreach (var provider in data)
         {
             if (rows.Count > 0)
-                rows.Add(new Text("")); // Empty line between providers
+                rows.Add(new Text(""));
 
             rows.AddRange(BuildCompactProviderBlock(provider));
         }
@@ -148,7 +124,6 @@ public class ConsoleRenderer
         var providerName = FormatProviderName(data.Provider);
         var providerColor = GetProviderColor(data.Provider);
 
-        // Provider name header
         yield return new Markup($"[{providerColor} bold]{providerName}[/]");
 
         if (data.HasError)
@@ -157,19 +132,15 @@ public class ConsoleRenderer
             yield break;
         }
 
-        // Session line: S  3%(97.0) 19:00
         if (data.Session != null)
         {
             yield return new Markup(BuildCompactLine("S", data.Session));
         }
 
-        // Weekly line: W 23%(14.5) 12:00 Fr
         if (data.Weekly != null)
         {
             yield return new Markup(BuildCompactLine("W", data.Weekly));
         }
-
-        // Note: Tertiary (T) not shown in compact mode
     }
 
     private string BuildCompactLine(string prefix, UsageWindow window)
@@ -177,22 +148,15 @@ public class ConsoleRenderer
         var percent = window.Percent;
         var color = GetPercentColor(percent);
 
-        // Budget always with one decimal: (14.5)
         var budget = window.ComputeDailyBudget(_workDayStartHour);
-        var budgetPart = budget.HasValue ? $"({budget:F1})" : "";
+        var budgetPart = budget.HasValue ? $"({budget:F1}%)" : "";
 
-        // Reset time and day
         var (time, day) = FormatResetShort(window.ResetAt);
 
-        // Format: "W 23%(14.5) 12:00 Fr" - day at the end
         var dayPart = string.IsNullOrEmpty(day) ? "" : $" [dim]{day}[/]";
-        return $"{prefix} [{color}]{percent,2:F0}%[/][dim]{budgetPart,-6}[/] {time}{dayPart}";
+        return $"{prefix} [{color}]{percent,2:F0}%[/][dim]{budgetPart,-8}[/] {time}{dayPart}";
     }
 
-    /// <summary>
-    /// Formats reset time for compact mode. Returns (time, dayAbbr).
-    /// Examples: ("19:00", ""), ("12:00", "Fr"), ("14:00", "Sa")
-    /// </summary>
     private static (string time, string day) FormatResetShort(DateTime? resetAt)
     {
         if (resetAt is not { } reset) return ("--:--", "");
@@ -201,25 +165,18 @@ public class ConsoleRenderer
         var now = DateTime.Now;
         var time = $"{local:HH:mm}";
 
-        // Today: just time, no day
         if (local.Date == now.Date)
             return (time, "");
 
-        // Any other day: show day abbreviation (including tomorrow)
         var daysUntil = (local.Date - now.Date).Days;
         if (daysUntil <= 6)
         {
-            var dayAbbr = local.DayOfWeek.ToString()[..2]; // Mo, Tu, We, Th, Fr, Sa, Su
+            var dayAbbr = local.DayOfWeek.ToString()[..2];
             return (time, dayAbbr);
         }
 
-        // Further: show date instead of time
         return ($"{local:d MMM}", "");
     }
-
-    #endregion
-
-    #region Common Helpers
 
     private static string GetPercentColor(double percent) => percent switch
     {
@@ -243,6 +200,4 @@ public class ConsoleRenderer
         "gemini" => "Gemini",
         _ => provider
     };
-
-    #endregion
 }
