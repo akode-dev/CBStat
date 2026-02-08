@@ -150,23 +150,19 @@ public class ConsoleRenderer
             yield break;
         }
 
-        // Session line: S  3%(97) 19:00
+        // Session line: S  3%(97.0) 19:00
         if (data.Session != null)
         {
             yield return new Markup(BuildCompactLine("S", data.Session));
         }
 
-        // Weekly line: W 23%(14) Fr 12:00
+        // Weekly line: W 23%(14.5) 12:00 Fr
         if (data.Weekly != null)
         {
             yield return new Markup(BuildCompactLine("W", data.Weekly));
         }
 
-        // Tertiary line: T  0%
-        if (data.Tertiary != null)
-        {
-            yield return new Markup(BuildCompactLine("T", data.Tertiary));
-        }
+        // Note: Tertiary (T) not shown in compact mode
     }
 
     private static string BuildCompactLine(string prefix, UsageWindow window)
@@ -174,46 +170,48 @@ public class ConsoleRenderer
         var percent = window.Percent;
         var color = GetPercentColor(percent);
 
-        // Budget in short form: (97) instead of (97.0%)
+        // Budget always with one decimal: (14.5)
         var budget = window.ComputeDailyBudget();
-        var budgetPart = budget.HasValue ? $"({budget:F0})" : "";
+        var budgetPart = budget.HasValue ? $"({budget:F1})" : "";
 
-        // Reset time in short form
-        var resetPart = FormatResetShort(window.ResetAt);
+        // Reset time and day
+        var (time, day) = FormatResetShort(window.ResetAt);
 
-        // Format: "S  3%(97) 19:00" - fits in ~20 chars
-        return $"{prefix} [{color}]{percent,2:F0}%[/][dim]{budgetPart,-4}[/] {resetPart}";
+        // Format: "W 23%(14.5) 12:00 Fr" - day at the end
+        var dayPart = string.IsNullOrEmpty(day) ? "" : $" [dim]{day}[/]";
+        return $"{prefix} [{color}]{percent,2:F0}%[/][dim]{budgetPart,-6}[/] {time}{dayPart}";
     }
 
     /// <summary>
-    /// Formats reset time very short for compact mode.
-    /// Examples: "19:00", "Fr 12:00", "Tmrw 14:00", "13 Feb"
+    /// Formats reset time for compact mode. Returns (time, dayAbbr).
+    /// Examples: ("19:00", ""), ("12:00", "Fr"), ("14:00", "Tmrw")
     /// </summary>
-    private static string FormatResetShort(DateTime? resetAt)
+    private static (string time, string day) FormatResetShort(DateTime? resetAt)
     {
-        if (resetAt is not { } reset) return "";
+        if (resetAt is not { } reset) return ("--:--", "");
 
         var local = reset.ToLocalTime();
         var now = DateTime.Now;
+        var time = $"{local:HH:mm}";
 
-        // Today: just time
+        // Today: just time, no day
         if (local.Date == now.Date)
-            return $"{local:HH:mm}";
+            return (time, "");
 
         // Tomorrow
         if (local.Date == now.Date.AddDays(1))
-            return $"Tmrw {local:HH:mm}";
+            return (time, "Tmrw");
 
-        // This week: day abbreviation + time
+        // This week: day abbreviation
         var daysUntil = (local.Date - now.Date).Days;
         if (daysUntil <= 6)
         {
             var dayAbbr = local.DayOfWeek.ToString()[..2]; // Mo, Tu, We, Th, Fr, Sa, Su
-            return $"{dayAbbr} {local:HH:mm}";
+            return (time, dayAbbr);
         }
 
-        // Further: date
-        return $"{local:d MMM}";
+        // Further: show date instead of time
+        return ($"{local:d MMM}", "");
     }
 
     #endregion

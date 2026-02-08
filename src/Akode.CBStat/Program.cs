@@ -72,7 +72,7 @@ while (true)
             {
                 while (initialData == null && !cts.Token.IsCancellationRequested)
                 {
-                    await Task.Delay(700);
+                    await Task.Delay(1500);
                     messageIndex = (messageIndex + 1) % messages.Length;
                     ctx.Status(messages[messageIndex]);
                 }
@@ -178,16 +178,34 @@ static IRenderable BuildDisplay(List<UsageData> data, TimeSpan refreshInterval, 
     var renderer = new ConsoleRenderer();
     var content = renderer.BuildDisplay(data, displayMode);
 
-    var refreshIndicator = isRefreshing ? "[cyan]⟳[/] " : "";
-    var devIndicator = devMode ? "[yellow]DEV[/] | " : "";
-    var modeIndicator = displayMode == DisplayMode.Compact ? "[dim]C[/] | " : "";
+    var refreshIndicator = isRefreshing ? "[cyan]⟳[/]" : "";
 
-    var statusLine = $"{refreshIndicator}{devIndicator}{modeIndicator}Updated: {DateTime.Now:HH:mm:ss} | Refresh: {refreshInterval.TotalSeconds}s | [dim]O[/]=settings [dim]Q[/]=quit";
+    if (displayMode == DisplayMode.Compact)
+    {
+        // Compact status: multiple short lines
+        var lines = new List<string>();
+        if (!string.IsNullOrEmpty(refreshIndicator)) lines.Add(refreshIndicator);
+        if (devMode) lines.Add("[yellow]DEV[/]");
+        lines.Add($"{DateTime.Now:HH:mm}");
+        lines.Add($"{refreshInterval.TotalSeconds}s");
+        lines.Add("[dim]O[/]/[dim]Q[/]");
 
-    return new Rows(
-        content,
-        new Markup($"\n[dim]{statusLine}[/]")
-    );
+        return new Rows(
+            content,
+            new Markup($"\n[dim]{string.Join("\n", lines)}[/]")
+        );
+    }
+    else
+    {
+        // Vertical mode: single status line
+        var devIndicator = devMode ? "[yellow]DEV[/] | " : "";
+        var statusLine = $"{refreshIndicator}{devIndicator}Updated: {DateTime.Now:HH:mm:ss} | Refresh: {refreshInterval.TotalSeconds}s | [dim]O[/]=settings [dim]Q[/]=quit";
+
+        return new Rows(
+            content,
+            new Markup($"\n[dim]{statusLine}[/]")
+        );
+    }
 }
 
 static void MonitorKeys(CancellationToken ct, Action onSettings, Action onQuit)
