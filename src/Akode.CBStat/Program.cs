@@ -220,7 +220,7 @@ static IRenderable BuildDisplay(List<UsageData> data, TimeSpan refreshInterval, 
     {
         // Vertical mode: single status line
         var devIndicator = devMode ? "[yellow]DEV[/] | " : "";
-        var statusLine = $"{refreshIndicator}{devIndicator}Updated: {DateTime.Now:HH:mm:ss} | Refresh: {refreshInterval.TotalSeconds}s | [dim]Ctrl+O[/]=settings [dim]Ctrl+Q[/]=quit";
+        var statusLine = $"{refreshIndicator}{devIndicator}Updated: {DateTime.Now:HH:mm:ss} | Refresh: {refreshInterval.TotalSeconds}s | [dim]Ctrl+O[/]=options [dim]Ctrl+Q[/]=quit";
 
         return new Rows(
             content,
@@ -269,7 +269,7 @@ static void ShowHelp()
     AnsiConsole.MarkupLine("  -h, --help                 Show this help");
     AnsiConsole.WriteLine();
     AnsiConsole.MarkupLine("[bold]Keyboard shortcuts:[/]");
-    AnsiConsole.MarkupLine("  Ctrl+O                     Open settings");
+    AnsiConsole.MarkupLine("  Ctrl+O                     Options");
     AnsiConsole.MarkupLine("  Ctrl+Q                     Quit");
     AnsiConsole.WriteLine();
     AnsiConsole.MarkupLine("[bold]Examples:[/]");
