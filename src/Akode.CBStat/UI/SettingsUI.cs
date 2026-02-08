@@ -27,6 +27,7 @@ public class SettingsUI
             var devStatus = _settingsService.Settings.DeveloperModeEnabled ? "[yellow]ON[/]" : "[dim]OFF[/]";
             var enabledCount = _settingsService.Settings.Providers.Count(p => p.IsEnabled);
             var interval = _settingsService.Settings.RefreshIntervalSeconds;
+            var displayMode = FormatDisplayMode(_settingsService.Settings.DisplayMode);
 
             var choice = AnsiConsole.Prompt(
                 new SelectionPrompt<string>()
@@ -35,6 +36,7 @@ public class SettingsUI
                     .AddChoices([
                         $"Providers          [[{enabledCount}/3 enabled]]",
                         $"Refresh Interval   [[{FormatInterval(interval)}]]",
+                        $"Display Mode       [[{displayMode}]]",
                         $"Developer Mode     {devStatus}",
                         "───────────────────",
                         "[green]Save & Exit[/]",
@@ -48,6 +50,10 @@ public class SettingsUI
             else if (choice.StartsWith("Refresh Interval"))
             {
                 ConfigureRefreshInterval();
+            }
+            else if (choice.StartsWith("Display Mode"))
+            {
+                ConfigureDisplayMode();
             }
             else if (choice.StartsWith("Developer Mode"))
             {
@@ -159,6 +165,36 @@ public class SettingsUI
         Thread.Sleep(300);
     }
 
+    private void ConfigureDisplayMode()
+    {
+        Console.Clear();
+        AnsiConsole.MarkupLine("[bold]Display Mode[/]");
+        AnsiConsole.MarkupLine("[dim]───────────────────────────────────────[/]");
+        AnsiConsole.WriteLine();
+
+        var modes = new Dictionary<string, DisplayMode>
+        {
+            [Back] = (DisplayMode)(-1),
+            ["Vertical (stacked panels)"] = DisplayMode.Vertical,
+            ["Compact (single-line per provider)"] = DisplayMode.Compact
+        };
+
+        var current = _settingsService.Settings.DisplayMode;
+
+        var choice = AnsiConsole.Prompt(
+            new SelectionPrompt<string>()
+                .Title($"Current: [yellow]{FormatDisplayMode(current)}[/]")
+                .HighlightStyle(Style.Parse("cyan"))
+                .AddChoices(modes.Keys));
+
+        if (choice == Back)
+            return;
+
+        _settingsService.Settings.DisplayMode = modes[choice];
+        AnsiConsole.MarkupLine($"[green]Set to: {choice}[/]");
+        Thread.Sleep(400);
+    }
+
     private static string FormatInterval(int seconds) => seconds switch
     {
         30 => "30s",
@@ -167,5 +203,12 @@ public class SettingsUI
         300 => "5m",
         600 => "10m",
         _ => $"{seconds}s"
+    };
+
+    private static string FormatDisplayMode(DisplayMode mode) => mode switch
+    {
+        DisplayMode.Vertical => "Vertical",
+        DisplayMode.Compact => "Compact",
+        _ => "Unknown"
     };
 }

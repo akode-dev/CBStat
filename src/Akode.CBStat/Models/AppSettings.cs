@@ -1,6 +1,22 @@
 namespace Akode.CBStat.Models;
 
 /// <summary>
+/// Display mode for the usage output.
+/// </summary>
+public enum DisplayMode
+{
+    /// <summary>
+    /// Vertical layout with panels stacked.
+    /// </summary>
+    Vertical = 0,
+
+    /// <summary>
+    /// Horizontal compact layout for narrow windows.
+    /// </summary>
+    Compact = 1
+}
+
+/// <summary>
 /// Application settings for cbstat.
 /// </summary>
 public class AppSettings
@@ -31,6 +47,11 @@ public class AppSettings
     public int CommandTimeoutSeconds { get; set; } = 30;
 
     /// <summary>
+    /// Display mode: Vertical (stacked panels) or Compact (horizontal single-line).
+    /// </summary>
+    public DisplayMode DisplayMode { get; set; } = DisplayMode.Vertical;
+
+    /// <summary>
     /// Gets enabled providers in display order.
     /// </summary>
     public IEnumerable<ProviderConfig> GetEnabledProviders() =>
@@ -46,6 +67,7 @@ public class AppSettings
         Providers = ProviderConfig.GetDefaults().ToList(),
         RefreshIntervalSeconds = 120,
         DeveloperModeEnabled = false,
-        CommandTimeoutSeconds = 30
+        CommandTimeoutSeconds = 30,
+        DisplayMode = DisplayMode.Vertical
     };
 }

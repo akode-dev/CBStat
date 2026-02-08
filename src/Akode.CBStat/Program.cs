@@ -111,11 +111,12 @@ while (true)
         var isRefreshing = false;
         var lastUpdate = DateTime.Now;
 
-        await AnsiConsole.Live(BuildDisplay(currentData, refreshInterval, settings.Settings.DeveloperModeEnabled, isRefreshing))
+        var displayMode = settings.Settings.DisplayMode;
+        await AnsiConsole.Live(BuildDisplay(currentData, refreshInterval, settings.Settings.DeveloperModeEnabled, isRefreshing, displayMode))
             .AutoClear(false)
             .StartAsync(async ctx =>
             {
-                ctx.UpdateTarget(BuildDisplay(currentData, refreshInterval, settings.Settings.DeveloperModeEnabled, false));
+                ctx.UpdateTarget(BuildDisplay(currentData, refreshInterval, settings.Settings.DeveloperModeEnabled, false, displayMode));
                 ctx.Refresh();
 
                 while (!cts.Token.IsCancellationRequested)
@@ -135,7 +136,7 @@ while (true)
 
                         // Show refreshing indicator
                         isRefreshing = true;
-                        ctx.UpdateTarget(BuildDisplay(currentData, refreshInterval, settings.Settings.DeveloperModeEnabled, true));
+                        ctx.UpdateTarget(BuildDisplay(currentData, refreshInterval, settings.Settings.DeveloperModeEnabled, true, displayMode));
                         ctx.Refresh();
 
                         // Fetch new data
@@ -144,7 +145,7 @@ while (true)
 
                         // Update display
                         isRefreshing = false;
-                        ctx.UpdateTarget(BuildDisplay(currentData, refreshInterval, settings.Settings.DeveloperModeEnabled, false));
+                        ctx.UpdateTarget(BuildDisplay(currentData, refreshInterval, settings.Settings.DeveloperModeEnabled, false, displayMode));
                         ctx.Refresh();
                     }
                     catch (OperationCanceledException)
@@ -172,18 +173,19 @@ while (true)
 AnsiConsole.WriteLine();
 AnsiConsole.MarkupLine("[dim]Goodbye![/]");
 
-static IRenderable BuildDisplay(List<UsageData> data, TimeSpan refreshInterval, bool devMode, bool isRefreshing)
+static IRenderable BuildDisplay(List<UsageData> data, TimeSpan refreshInterval, bool devMode, bool isRefreshing, DisplayMode displayMode)
 {
     var renderer = new ConsoleRenderer();
-    var table = renderer.BuildTable(data);
+    var content = renderer.BuildDisplay(data, displayMode);
 
     var refreshIndicator = isRefreshing ? "[cyan]⟳[/] " : "";
     var devIndicator = devMode ? "[yellow]DEV[/] | " : "";
+    var modeIndicator = displayMode == DisplayMode.Compact ? "[dim]C[/] | " : "";
 
-    var statusLine = $"{refreshIndicator}{devIndicator}Updated: {DateTime.Now:HH:mm:ss} | Refresh: {refreshInterval.TotalSeconds}s | [dim]O[/]=settings [dim]Q[/]=quit";
+    var statusLine = $"{refreshIndicator}{devIndicator}{modeIndicator}Updated: {DateTime.Now:HH:mm:ss} | Refresh: {refreshInterval.TotalSeconds}s | [dim]O[/]=settings [dim]Q[/]=quit";
 
     return new Rows(
-        table,
+        content,
         new Markup($"\n[dim]{statusLine}[/]")
     );
 }
