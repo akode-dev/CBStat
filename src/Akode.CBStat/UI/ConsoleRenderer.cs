@@ -184,7 +184,7 @@ public class ConsoleRenderer
 
     /// <summary>
     /// Formats reset time for compact mode. Returns (time, dayAbbr).
-    /// Examples: ("19:00", ""), ("12:00", "Fr"), ("14:00", "Tmrw")
+    /// Examples: ("19:00", ""), ("12:00", "Fr"), ("14:00", "Sa")
     /// </summary>
     private static (string time, string day) FormatResetShort(DateTime? resetAt)
     {
@@ -198,11 +198,7 @@ public class ConsoleRenderer
         if (local.Date == now.Date)
             return (time, "");
 
-        // Tomorrow
-        if (local.Date == now.Date.AddDays(1))
-            return (time, "Tmrw");
-
-        // This week: day abbreviation
+        // Any other day: show day abbreviation (including tomorrow)
         var daysUntil = (local.Date - now.Date).Days;
         if (daysUntil <= 6)
         {

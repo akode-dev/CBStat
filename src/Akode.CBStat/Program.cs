@@ -182,15 +182,20 @@ static IRenderable BuildDisplay(List<UsageData> data, TimeSpan refreshInterval, 
 
     if (displayMode == DisplayMode.Compact)
     {
+        // Compact header: Today: Fr
+        var todayHeader = new Markup($"[dim]Today: {DateTime.Now:ddd}[/]\n");
+
         // Compact status: multiple short lines
         var lines = new List<string>();
         if (!string.IsNullOrEmpty(refreshIndicator)) lines.Add(refreshIndicator);
         if (devMode) lines.Add("[yellow]DEV[/]");
-        lines.Add($"{DateTime.Now:HH:mm}");
-        lines.Add($"{refreshInterval.TotalSeconds}s");
-        lines.Add("[dim]O[/]/[dim]Q[/]");
+        lines.Add($"UPD: {DateTime.Now:HH:mm}");
+        lines.Add($"RSH: {refreshInterval.TotalSeconds}s");
+        lines.Add("Opt: ^O");
+        lines.Add("Exit: ^Q");
 
         return new Rows(
+            todayHeader,
             content,
             new Markup($"\n[dim]{string.Join("\n", lines)}[/]")
         );
