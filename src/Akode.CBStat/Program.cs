@@ -207,8 +207,8 @@ static IRenderable BuildDisplay(List<UsageData> data, TimeSpan refreshInterval, 
         if (devMode) lines.Add("[yellow]DEV[/]");
         lines.Add($" UPD: {DateTime.Now:HH:mm}");
         lines.Add($"RFSH: {refreshInterval.TotalSeconds}s");
-        lines.Add(" Opt: ^O");
-        lines.Add("Exit: ^Q");
+        lines.Add(" Opt: Ctrl+O");
+        lines.Add("Exit: Ctrl+Q");
 
         return new Rows(
             header,
@@ -220,7 +220,7 @@ static IRenderable BuildDisplay(List<UsageData> data, TimeSpan refreshInterval, 
     {
         // Vertical mode: single status line
         var devIndicator = devMode ? "[yellow]DEV[/] | " : "";
-        var statusLine = $"{refreshIndicator}{devIndicator}Updated: {DateTime.Now:HH:mm:ss} | Refresh: {refreshInterval.TotalSeconds}s | [dim]^O[/]=settings [dim]^Q[/]=quit";
+        var statusLine = $"{refreshIndicator}{devIndicator}Updated: {DateTime.Now:HH:mm:ss} | Refresh: {refreshInterval.TotalSeconds}s | [dim]Ctrl+O[/]=settings [dim]Ctrl+Q[/]=quit";
 
         return new Rows(
             content,
