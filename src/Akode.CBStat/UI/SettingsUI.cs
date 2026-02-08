@@ -33,8 +33,8 @@ public class SettingsUI
                     .Title("Select option:")
                     .HighlightStyle(Style.Parse("cyan"))
                     .AddChoices([
-                        $"Providers          [{enabledCount}/3 enabled]",
-                        $"Refresh Interval   [{FormatInterval(interval)}]",
+                        $"Providers          [[{enabledCount}/3 enabled]]",
+                        $"Refresh Interval   [[{FormatInterval(interval)}]]",
                         $"Developer Mode     {devStatus}",
                         "───────────────────",
                         "[green]Save & Exit[/]",
