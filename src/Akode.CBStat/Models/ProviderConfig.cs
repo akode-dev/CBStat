@@ -1,6 +1,24 @@
 namespace Akode.CBStat.Models;
 
 /// <summary>
+/// Configuration for a provider.
+/// </summary>
+public record ProviderConfig
+{
+    public string Id { get; init; } = string.Empty;
+    public string DisplayName { get; init; } = string.Empty;
+    public bool IsEnabled { get; set; } = true;
+    public int Order { get; set; }
+
+    public static IReadOnlyList<ProviderConfig> GetDefaults() =>
+    [
+        new() { Id = "claude", DisplayName = "Claude", IsEnabled = true, Order = 0 },
+        new() { Id = "codex", DisplayName = "Codex", IsEnabled = true, Order = 1 },
+        new() { Id = "gemini", DisplayName = "Gemini", IsEnabled = true, Order = 2 }
+    ];
+}
+
+/// <summary>
 /// Application constants for providers.
 /// </summary>
 public static class ProviderConstants

@@ -6,14 +6,22 @@ namespace Akode.CBStat.Services;
 public class CodexBarService
 {
     private readonly ICommandRunner _runner;
+    private readonly SettingsService _settings;
 
-    public CodexBarService(ICommandRunner runner)
+    public CodexBarService(ICommandRunner runner, SettingsService settings)
     {
         _runner = runner;
+        _settings = settings;
     }
 
     public async Task<UsageData> GetUsageAsync(string provider, CancellationToken ct = default)
     {
+        // Developer mode: return sample data
+        if (_settings.Settings.DeveloperModeEnabled)
+        {
+            return GetSampleData(provider);
+        }
+
         try
         {
             var normalized = ProviderConstants.ValidateAndNormalize(provider);
@@ -51,10 +59,13 @@ public class CodexBarService
     public async Task<List<UsageData>> GetAllUsageAsync(CancellationToken ct = default)
     {
         var results = new List<UsageData>();
-        foreach (var provider in ProviderConstants.GetDefaultProviders())
+        var enabledProviders = _settings.Settings.GetEnabledProviders();
+
+        foreach (var provider in enabledProviders)
         {
-            results.Add(await GetUsageAsync(provider, ct));
+            results.Add(await GetUsageAsync(provider.Id, ct));
         }
+
         return results;
     }
 
@@ -81,6 +92,39 @@ public class CodexBarService
         {
             Provider = provider,
             Error = "Failed to parse response",
+            FetchedAt = DateTime.UtcNow
+        };
+    }
+
+    private static UsageData GetSampleData(string provider)
+    {
+        var random = new Random();
+        var normalized = provider.ToLowerInvariant();
+
+        return new UsageData
+        {
+            Provider = provider,
+            Session = new UsageWindow
+            {
+                Used = random.Next(20, 80),
+                Limit = 100,
+                ResetAt = DateTime.UtcNow.AddHours(random.Next(1, 12)),
+                WindowMinutes = 180
+            },
+            Weekly = new UsageWindow
+            {
+                Used = random.Next(10, 60),
+                Limit = 100,
+                ResetAt = DateTime.UtcNow.AddDays(random.Next(1, 5)),
+                WindowMinutes = 10080
+            },
+            Tertiary = normalized == "claude" ? new UsageWindow
+            {
+                Used = random.Next(30, 90),
+                Limit = 100,
+                ResetAt = DateTime.UtcNow.AddDays(random.Next(1, 7)),
+                WindowMinutes = 10080
+            } : null,
             FetchedAt = DateTime.UtcNow
         };
     }

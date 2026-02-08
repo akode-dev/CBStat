@@ -4,9 +4,11 @@ namespace Akode.CBStat.Models;
 
 [JsonSourceGenerationOptions(
     PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase,
-    PropertyNameCaseInsensitive = true)]
+    PropertyNameCaseInsensitive = true,
+    WriteIndented = true)]
 [JsonSerializable(typeof(UsageDataDto))]
 [JsonSerializable(typeof(List<UsageDataDto>))]
+[JsonSerializable(typeof(AppSettings))]
 public partial class JsonContext : JsonSerializerContext
 {
 }
