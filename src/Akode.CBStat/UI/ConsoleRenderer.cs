@@ -99,7 +99,7 @@ public class ConsoleRenderer
 
         var bar = new string('\u2588', filledWidth) + new string('\u2591', emptyWidth);
         var dailyBudget = window.GetDailyBudgetText(_workDayStartHour);
-        var budgetPart = string.IsNullOrEmpty(dailyBudget) ? "" : $" [dim]{dailyBudget}[/]";
+        var budgetPart = string.IsNullOrEmpty(dailyBudget) ? "" : $" [dim]{Markup.Escape(dailyBudget)}[/]";
 
         return new Markup($"{label,-8} [{color}]{bar}[/] {percent,3:F0}%{budgetPart}");
     }
@@ -124,7 +124,7 @@ public class ConsoleRenderer
         var providerName = FormatProviderName(data.Provider);
         var providerColor = GetProviderColor(data.Provider);
 
-        yield return new Markup($"[{providerColor} bold]{providerName}[/]");
+        yield return new Markup($"[{providerColor}][bold]{providerName}[/][/]");
 
         if (data.HasError)
         {
@@ -134,27 +134,50 @@ public class ConsoleRenderer
 
         if (data.Session != null)
         {
-            yield return new Markup(BuildCompactLine("S", data.Session));
+            foreach (var line in BuildCompactWindowRows("S", data.Session, emphasizeBudget: false))
+            {
+                yield return line;
+            }
+
+            if (data.Weekly != null)
+                yield return new Text("");
         }
 
         if (data.Weekly != null)
         {
-            yield return new Markup(BuildCompactLine("W", data.Weekly));
+            foreach (var line in BuildCompactWindowRows("W", data.Weekly, emphasizeBudget: true))
+            {
+                yield return line;
+            }
         }
     }
 
-    private string BuildCompactLine(string prefix, UsageWindow window)
+    private IEnumerable<IRenderable> BuildCompactWindowRows(string prefix, UsageWindow window, bool emphasizeBudget)
     {
         var percent = window.Percent;
         var color = GetPercentColor(percent);
 
-        var budget = window.ComputeDailyBudget(_workDayStartHour);
-        var budgetPart = budget.HasValue ? $"({budget:F1}%)" : "";
-
         var (time, day) = FormatResetShort(window.ResetAt);
-
         var dayPart = string.IsNullOrEmpty(day) ? "" : $" [dim]{day}[/]";
-        return $"{prefix} [{color}]{percent,2:F0}%[/][dim]{budgetPart,-8}[/] {time}{dayPart}";
+        yield return new Markup($"[dim]{prefix}:{time}[/]{dayPart}");
+
+        var budgetPart = BuildCompactBudgetPart(window, emphasizeBudget);
+        var percentPart = $"[{color} dim]{percent:F0}%[/]";
+        yield return string.IsNullOrEmpty(budgetPart)
+            ? new Markup(percentPart)
+            : new Markup($"{percentPart} {budgetPart}");
+    }
+
+    private string BuildCompactBudgetPart(UsageWindow window, bool emphasizeBudget)
+    {
+        var budget = window.GetDailyBudgetText(_workDayStartHour);
+        if (string.IsNullOrEmpty(budget))
+            return "";
+
+        var escapedBudget = Markup.Escape(budget);
+        return emphasizeBudget
+            ? $"[bold]{escapedBudget}[/]"
+            : $"[dim]{escapedBudget}[/]";
     }
 
     private static (string time, string day) FormatResetShort(DateTime? resetAt)

@@ -93,6 +93,6 @@ public record UsageWindow
     public string GetDailyBudgetText(int workDayStartHour = 1)
     {
         var budget = ComputeDailyBudget(workDayStartHour);
-        return budget.HasValue ? $"({budget:F1}%)" : "";
+        return budget.HasValue ? $"[{budget:F1}%]" : "";
     }
 }

@@ -10,19 +10,28 @@ When you work for many hours, it is easy to spend too much quota early and get b
 
 `cbstat` shows:
 - current usage percent for each window
-- your safe daily pace in parentheses
+- your safe daily pace in square brackets
 - color risk level so you can spot overload early
 
 ## What numbers and colors mean
 
-Example line:
+Compact mode example:
 
 ```text
-W 23% (14.5%) 12:00 Fr
+S:19:00
+12% [88.0%]
+
+W:12:00 Fr
+23% [14.5%]
 ```
 
-- `23%` is current usage in this provider window.
-- `(14.5%)` is how much you can still safely spend today to stay on pace.
+- `S` means session window (intra-day window).
+- `W` means weekly window.
+- Time after `S:` / `W:` is the provider reset time for that specific window, shown in your local time.
+- For `S`, this is reset time of the intra-day session window.
+- For `W`, this is reset time of the weekly window.
+- `23%` is current usage in that provider window.
+- `[14.5%]` is how much you can still safely spend today to stay on pace.
 - Colors for the main percent:
 1. Green: under 50%
 2. Yellow: 50-79%
@@ -134,7 +143,7 @@ cbstat --dev
 
 Keyboard shortcuts:
 
-1. `O` or `Ctrl+O`: open settings
+1. `Ctrl+O`: open settings
 2. `Ctrl+C`: quit
 
 ## Day Start and daily pacing
@@ -144,7 +153,7 @@ Daily pacing uses your **local computer time**.
 Default day start is **01:00** local time.  
 You can change it in Settings -> `Day Start`.
 
-This matters because your "(daily pace)" value depends on where your personal day boundary starts.
+This matters because your "[daily pace]" value depends on where your personal day boundary starts.
 
 ## Real-life example
 
@@ -153,7 +162,7 @@ You work from 09:00 to 19:00 and usually do most heavy tasks in the morning.
 At 10:00 you see:
 
 ```text
-W 52% (6.0%)
+W 52% [6.0%]
 ```
 
 This means:
