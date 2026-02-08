@@ -1,6 +1,8 @@
+using Akode.CBStat.Models;
 using Akode.CBStat.Services;
 using Akode.CBStat.UI;
 using Spectre.Console;
+using Spectre.Console.Rendering;
 
 // Handle --help
 if (args.Contains("--help") || args.Contains("-h"))
@@ -23,37 +25,6 @@ Console.CancelKeyPress += (_, e) =>
     cts.Cancel();
 };
 
-// Key monitoring thread
-var keyMonitorTask = Task.Run(() =>
-{
-    while (!cts.Token.IsCancellationRequested)
-    {
-        if (Console.KeyAvailable)
-        {
-            var key = Console.ReadKey(intercept: true);
-
-            // Ctrl+O for settings
-            if (key.Modifiers == ConsoleModifiers.Control && key.Key == ConsoleKey.O)
-            {
-                openSettings = true;
-                cts.Cancel();
-            }
-            // 'o' or 'O' also opens settings (easier to use)
-            else if (key.Key == ConsoleKey.O)
-            {
-                openSettings = true;
-                cts.Cancel();
-            }
-            // 'q' or 'Q' to quit
-            else if (key.Key == ConsoleKey.Q)
-            {
-                cts.Cancel();
-            }
-        }
-        Thread.Sleep(50);
-    }
-});
-
 var runner = new CommandRunner();
 var service = new CodexBarService(runner, settings);
 var renderer = new ConsoleRenderer();
@@ -65,6 +36,9 @@ while (true)
     cts = new CancellationTokenSource();
     openSettings = false;
 
+    // Start key monitoring
+    _ = Task.Run(() => MonitorKeys(cts.Token, () => { openSettings = true; cts.Cancel(); }, () => cts.Cancel()));
+
     var refreshInterval = TimeSpan.FromSeconds(settings.Settings.RefreshIntervalSeconds);
 
     // Header
@@ -75,32 +49,103 @@ while (true)
     AnsiConsole.MarkupLine("[dim]Press [bold]O[/] for settings, [bold]Q[/] to quit[/]");
     AnsiConsole.WriteLine();
 
+    // Initial load with spinner
+    List<UsageData>? initialData = null;
+    await AnsiConsole.Status()
+        .AutoRefresh(true)
+        .Spinner(Spinner.Known.Dots)
+        .SpinnerStyle(Style.Parse("cyan"))
+        .StartAsync("Connecting to providers...", async ctx =>
+        {
+            var messages = new[]
+            {
+                "Connecting to providers...",
+                "Fetching usage data...",
+                "Querying Claude...",
+                "Checking Codex...",
+                "Reading Gemini stats...",
+                "Processing responses..."
+            };
+
+            var messageIndex = 0;
+            var messageTask = Task.Run(async () =>
+            {
+                while (initialData == null && !cts.Token.IsCancellationRequested)
+                {
+                    await Task.Delay(700);
+                    messageIndex = (messageIndex + 1) % messages.Length;
+                    ctx.Status(messages[messageIndex]);
+                }
+            });
+
+            try
+            {
+                initialData = await service.GetAllUsageAsync(cts.Token);
+            }
+            catch (OperationCanceledException)
+            {
+                // Cancelled during initial load
+            }
+        });
+
+    if (cts.Token.IsCancellationRequested && !openSettings)
+    {
+        break;
+    }
+
+    if (initialData == null)
+    {
+        if (openSettings)
+        {
+            await settingsUI.ShowAsync();
+            service = new CodexBarService(runner, settings);
+            continue;
+        }
+        break;
+    }
+
+    // Main display loop
     try
     {
-        await AnsiConsole.Live(new Text("Loading..."))
-            .AutoClear(true)
+        var currentData = initialData;
+        var isRefreshing = false;
+        var lastUpdate = DateTime.Now;
+
+        await AnsiConsole.Live(BuildDisplay(currentData, refreshInterval, settings.Settings.DeveloperModeEnabled, isRefreshing))
+            .AutoClear(false)
             .StartAsync(async ctx =>
             {
+                ctx.UpdateTarget(BuildDisplay(currentData, refreshInterval, settings.Settings.DeveloperModeEnabled, false));
+                ctx.Refresh();
+
                 while (!cts.Token.IsCancellationRequested)
                 {
-                    var data = await service.GetAllUsageAsync(cts.Token);
-                    var table = renderer.BuildTable(data);
-
-                    var statusLine = settings.Settings.DeveloperModeEnabled
-                        ? $"[yellow]DEV[/] | Updated: {DateTime.Now:HH:mm:ss} | Refresh: {refreshInterval.TotalSeconds}s | [dim]O[/]=settings [dim]Q[/]=quit"
-                        : $"Updated: {DateTime.Now:HH:mm:ss} | Refresh: {refreshInterval.TotalSeconds}s | [dim]O[/]=settings [dim]Q[/]=quit";
-
-                    var layout = new Rows(
-                        table,
-                        new Markup($"\n[dim]{statusLine}[/]")
-                    );
-
-                    ctx.UpdateTarget(layout);
-                    ctx.Refresh();
-
                     try
                     {
-                        await Task.Delay(refreshInterval, cts.Token);
+                        // Wait for refresh interval, checking frequently for cancellation
+                        var elapsed = TimeSpan.Zero;
+                        while (elapsed < refreshInterval && !cts.Token.IsCancellationRequested)
+                        {
+                            await Task.Delay(100, cts.Token);
+                            elapsed += TimeSpan.FromMilliseconds(100);
+                        }
+
+                        if (cts.Token.IsCancellationRequested)
+                            break;
+
+                        // Show refreshing indicator
+                        isRefreshing = true;
+                        ctx.UpdateTarget(BuildDisplay(currentData, refreshInterval, settings.Settings.DeveloperModeEnabled, true));
+                        ctx.Refresh();
+
+                        // Fetch new data
+                        currentData = await service.GetAllUsageAsync(cts.Token);
+                        lastUpdate = DateTime.Now;
+
+                        // Update display
+                        isRefreshing = false;
+                        ctx.UpdateTarget(BuildDisplay(currentData, refreshInterval, settings.Settings.DeveloperModeEnabled, false));
+                        ctx.Refresh();
                     }
                     catch (OperationCanceledException)
                     {
@@ -116,19 +161,55 @@ while (true)
 
     if (openSettings)
     {
-        // Show settings UI
         await settingsUI.ShowAsync();
-        // Reload settings into service
         service = new CodexBarService(runner, settings);
         continue;
     }
 
-    // Exit
     break;
 }
 
 AnsiConsole.WriteLine();
 AnsiConsole.MarkupLine("[dim]Goodbye![/]");
+
+static IRenderable BuildDisplay(List<UsageData> data, TimeSpan refreshInterval, bool devMode, bool isRefreshing)
+{
+    var renderer = new ConsoleRenderer();
+    var table = renderer.BuildTable(data);
+
+    var refreshIndicator = isRefreshing ? "[cyan]⟳[/] " : "";
+    var devIndicator = devMode ? "[yellow]DEV[/] | " : "";
+
+    var statusLine = $"{refreshIndicator}{devIndicator}Updated: {DateTime.Now:HH:mm:ss} | Refresh: {refreshInterval.TotalSeconds}s | [dim]O[/]=settings [dim]Q[/]=quit";
+
+    return new Rows(
+        table,
+        new Markup($"\n[dim]{statusLine}[/]")
+    );
+}
+
+static void MonitorKeys(CancellationToken ct, Action onSettings, Action onQuit)
+{
+    while (!ct.IsCancellationRequested)
+    {
+        if (Console.KeyAvailable)
+        {
+            var key = Console.ReadKey(intercept: true);
+
+            if (key.Key == ConsoleKey.O)
+            {
+                onSettings();
+                return;
+            }
+            else if (key.Key == ConsoleKey.Q)
+            {
+                onQuit();
+                return;
+            }
+        }
+        Thread.Sleep(50);
+    }
+}
 
 static void ShowHelp()
 {
