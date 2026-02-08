@@ -1,0 +1,69 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          - os: windows-latest
+            rid: win-x64
+            artifact: cbstat-win-x64.zip
+          - os: ubuntu-latest
+            rid: linux-x64
+            artifact: cbstat-linux-x64.tar.gz
+          - os: macos-latest
+            rid: osx-x64
+            artifact: cbstat-osx-x64.tar.gz
+          - os: macos-latest
+            rid: osx-arm64
+            artifact: cbstat-osx-arm64.tar.gz
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Publish
+        run: dotnet publish src/Akode.CBStat -c Release -r ${{ matrix.rid }} -o publish
+
+      - name: Package (Windows)
+        if: matrix.os == 'windows-latest'
+        run: Compress-Archive -Path publish/* -DestinationPath ${{ matrix.artifact }}
+
+      - name: Package (Unix)
+        if: matrix.os != 'windows-latest'
+        run: tar -czvf ${{ matrix.artifact }} -C publish .
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: ${{ matrix.artifact }}
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: artifacts/**/*
+          generate_release_notes: true

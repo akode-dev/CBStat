@@ -1,0 +1,28 @@
+name: Build
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Restore
+        run: dotnet restore CBStat.slnx
+
+      - name: Build
+        run: dotnet build CBStat.slnx -c Release --no-restore
+
+      - name: Test
+        run: dotnet test CBStat.slnx -c Release --no-build --verbosity normal

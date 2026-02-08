@@ -189,10 +189,10 @@ static IRenderable BuildDisplay(List<UsageData> data, TimeSpan refreshInterval, 
         var lines = new List<string>();
         if (!string.IsNullOrEmpty(refreshIndicator)) lines.Add(refreshIndicator);
         if (devMode) lines.Add("[yellow]DEV[/]");
-        lines.Add($"UPD: {DateTime.Now:HH:mm}");
-        lines.Add($"RSH: {refreshInterval.TotalSeconds}s");
-        lines.Add("Opt: ^O");
-        lines.Add("Exit: ^Q");
+        lines.Add($" UPD: {DateTime.Now:HH:mm}");
+        lines.Add($"RFSH: {refreshInterval.TotalSeconds}s");
+        lines.Add(" Opt: ^O");
+        lines.Add(" Exit: ^Q");
 
         return new Rows(
             todayHeader,
