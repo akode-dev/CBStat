@@ -119,7 +119,7 @@ public class ConsoleRenderer
 
     #endregion
 
-    #region Compact Mode
+    #region Compact Mode (narrow vertical window)
 
     private IRenderable BuildCompactDisplay(IReadOnlyList<UsageData> data)
     {
@@ -127,65 +127,93 @@ public class ConsoleRenderer
 
         foreach (var provider in data)
         {
-            rows.Add(BuildCompactProviderRow(provider));
+            if (rows.Count > 0)
+                rows.Add(new Markup("")); // Empty line between providers
+
+            rows.AddRange(BuildCompactProviderBlock(provider));
         }
 
         return new Rows(rows);
     }
 
-    private IRenderable BuildCompactProviderRow(UsageData data)
+    private IEnumerable<IRenderable> BuildCompactProviderBlock(UsageData data)
     {
         var providerName = FormatProviderName(data.Provider);
         var providerColor = GetProviderColor(data.Provider);
 
+        // Provider name header
+        yield return new Markup($"[{providerColor} bold]{providerName}[/]");
+
         if (data.HasError)
         {
-            return new Markup($"[{providerColor}]{providerName,-7}[/] [red]{Markup.Escape(data.Error ?? "Error")}[/]");
+            yield return new Markup($"[red]Error[/]");
+            yield break;
         }
 
-        var parts = new List<string>();
-
-        // Session: S: 2% (14.5%) Today 19:00
+        // Session line: S  3%(97) 19:00
         if (data.Session != null)
         {
-            parts.Add(BuildCompactWindowPart("S", data.Session));
+            yield return new Markup(BuildCompactLine("S", data.Session));
         }
 
-        // Weekly: W: 23% (11.5%) 13 Feb 12:00
+        // Weekly line: W 23%(14) Fr 12:00
         if (data.Weekly != null)
         {
-            parts.Add(BuildCompactWindowPart("W", data.Weekly));
+            yield return new Markup(BuildCompactLine("W", data.Weekly));
         }
 
-        // Tertiary (for Claude): T: 30%
+        // Tertiary line: T  0%
         if (data.Tertiary != null)
         {
-            parts.Add(BuildCompactWindowPart("T", data.Tertiary));
+            yield return new Markup(BuildCompactLine("T", data.Tertiary));
         }
-
-        if (parts.Count == 0)
-        {
-            return new Markup($"[{providerColor}]{providerName,-7}[/] [dim]No data[/]");
-        }
-
-        var content = string.Join("  ", parts);
-        return new Markup($"[{providerColor}]{providerName,-7}[/] {content}");
     }
 
-    private static string BuildCompactWindowPart(string prefix, UsageWindow window)
+    private static string BuildCompactLine(string prefix, UsageWindow window)
     {
         var percent = window.Percent;
         var color = GetPercentColor(percent);
-        var barWidth = 10;
-        var filledWidth = (int)(barWidth * percent / 100);
-        var emptyWidth = barWidth - filledWidth;
 
-        var bar = new string('\u2588', filledWidth) + new string('\u2591', emptyWidth);
-        var dailyBudget = window.DailyBudgetText;
-        var budgetPart = string.IsNullOrEmpty(dailyBudget) ? "" : $" [dim]{dailyBudget}[/]";
-        var resetPart = window.FormatResetCompact(prefix);
+        // Budget in short form: (97) instead of (97.0%)
+        var budget = window.ComputeDailyBudget();
+        var budgetPart = budget.HasValue ? $"({budget:F0})" : "";
 
-        return $"[{color}]{bar}[/] {percent,2:F0}%{budgetPart} [dim]{resetPart}[/]";
+        // Reset time in short form
+        var resetPart = FormatResetShort(window.ResetAt);
+
+        // Format: "S  3%(97) 19:00" - fits in ~20 chars
+        return $"{prefix} [{color}]{percent,2:F0}%[/][dim]{budgetPart,-4}[/] {resetPart}";
+    }
+
+    /// <summary>
+    /// Formats reset time very short for compact mode.
+    /// Examples: "19:00", "Fr 12:00", "Tmrw 14:00", "13 Feb"
+    /// </summary>
+    private static string FormatResetShort(DateTime? resetAt)
+    {
+        if (resetAt is not { } reset) return "";
+
+        var local = reset.ToLocalTime();
+        var now = DateTime.Now;
+
+        // Today: just time
+        if (local.Date == now.Date)
+            return $"{local:HH:mm}";
+
+        // Tomorrow
+        if (local.Date == now.Date.AddDays(1))
+            return $"Tmrw {local:HH:mm}";
+
+        // This week: day abbreviation + time
+        var daysUntil = (local.Date - now.Date).Days;
+        if (daysUntil <= 6)
+        {
+            var dayAbbr = local.DayOfWeek.ToString()[..2]; // Mo, Tu, We, Th, Fr, Sa, Su
+            return $"{dayAbbr} {local:HH:mm}";
+        }
+
+        // Further: date
+        return $"{local:d MMM}";
     }
 
     #endregion
