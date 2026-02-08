@@ -211,7 +211,7 @@ static IRenderable BuildDisplay(List<UsageData> data, TimeSpan refreshInterval, 
         lines.Add($" UPD: {DateTime.Now:HH:mm}");
         lines.Add($"RFSH: {refreshInterval.TotalSeconds}s");
         lines.Add(" Opt: Ctrl+O");
-        lines.Add("Exit: Ctrl+Q");
+        lines.Add("Exit: Ctrl+C");
 
         return new Rows(
             header,
@@ -223,7 +223,7 @@ static IRenderable BuildDisplay(List<UsageData> data, TimeSpan refreshInterval, 
     {
         // Vertical mode: single status line
         var devIndicator = devMode ? "[yellow]DEV[/] | " : "";
-        var statusLine = $"{refreshIndicator}{devIndicator}Updated: {DateTime.Now:HH:mm:ss} | Refresh: {refreshInterval.TotalSeconds}s | [dim]Ctrl+O[/]=options [dim]Ctrl+Q[/]=quit";
+        var statusLine = $"{refreshIndicator}{devIndicator}Updated: {DateTime.Now:HH:mm:ss} | Refresh: {refreshInterval.TotalSeconds}s | [dim]Ctrl+O[/]=options [dim]Ctrl+C[/]=quit";
 
         return new Rows(
             content,
@@ -247,7 +247,7 @@ static void MonitorKeys(CancellationToken ct, Action onSettings, Action onQuit)
                 onSettings();
                 return;
             }
-            // Ctrl+Q or just Q for quit
+            // Ctrl+C or just Q for quit
             else if (key.Key == ConsoleKey.Q)
             {
                 onQuit();
@@ -273,7 +273,7 @@ static void ShowHelp()
     AnsiConsole.WriteLine();
     AnsiConsole.MarkupLine("[bold]Keyboard shortcuts:[/]");
     AnsiConsole.MarkupLine("  Ctrl+O                     Options");
-    AnsiConsole.MarkupLine("  Ctrl+Q                     Quit");
+    AnsiConsole.MarkupLine("  Ctrl+C                     Quit");
     AnsiConsole.WriteLine();
     AnsiConsole.MarkupLine("[bold]Examples:[/]");
     AnsiConsole.MarkupLine("  cbstat                          # Monitor all providers");
