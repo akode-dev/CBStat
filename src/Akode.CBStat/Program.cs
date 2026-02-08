@@ -47,7 +47,7 @@ while (true)
     var isCompact = settings.Settings.DisplayMode == DisplayMode.Compact;
     if (isCompact)
     {
-        AnsiConsole.MarkupLine($"[bold]CBStat[/] [dim]v{version}[/]");
+        AnsiConsole.MarkupLine($"[dim]CBStat[/] [dim]v{version}[/]");
     }
     else
     {
@@ -212,11 +212,11 @@ static IRenderable BuildDisplay(
             lines.Add("[yellow]DEV[/]");
         lines.Add($" UPD: {now:HH:mm}");
         lines.Add($"RFSH: {refreshSeconds}s");
-        lines.Add(" Opt: O/Ctrl+O");
+        lines.Add(" Opt: Ctrl+O");
         lines.Add("Exit: Ctrl+C");
 
         return new Rows(
-            new Markup($"[bold]CBStat[/] [dim]v{version}[/]"),
+            new Markup($"[dim]CBStat[/] [dim]v{version}[/]"),
             new Markup($"[dim]Today: {now:ddd}[/]\n"),
             content,
             new Markup($"\n[dim]{string.Join("\n", lines)}[/]")
@@ -224,7 +224,7 @@ static IRenderable BuildDisplay(
     }
 
     var devIndicator = devMode ? "[yellow]DEV[/] | " : string.Empty;
-    var statusLine = $"{refreshIndicator}{devIndicator}Updated: {now:HH:mm:ss} | Refresh: {refreshSeconds}s | [dim]O[/]=settings [dim]Ctrl+C[/]=quit";
+    var statusLine = $"{refreshIndicator}{devIndicator}Updated: {now:HH:mm:ss} | Refresh: {refreshSeconds}s | [dim]Ctrl+O[/]=settings [dim]Ctrl+C[/]=quit";
 
     return new Rows(
         new Markup($"[bold]CBStat[/] [dim]v{version}[/] - AI Provider Usage Monitor\n"),
@@ -240,7 +240,7 @@ static void MonitorKeys(CancellationToken ct, Action onSettings)
         if (Console.KeyAvailable)
         {
             var key = Console.ReadKey(intercept: true);
-            if (key.Key == ConsoleKey.O)
+            if (key.Key == ConsoleKey.O && key.Modifiers.HasFlag(ConsoleModifiers.Control))
             {
                 onSettings();
                 return;
@@ -264,7 +264,7 @@ static void ShowHelp()
     AnsiConsole.MarkupLine("  -h, --help                 Show this help");
     AnsiConsole.WriteLine();
     AnsiConsole.MarkupLine("[bold]Keyboard shortcuts:[/]");
-    AnsiConsole.MarkupLine("  O or Ctrl+O                Open settings");
+    AnsiConsole.MarkupLine("  Ctrl+O                     Open settings");
     AnsiConsole.MarkupLine("  Ctrl+C                     Quit");
     AnsiConsole.WriteLine();
     AnsiConsole.MarkupLine("[bold]Examples:[/]");

@@ -222,7 +222,7 @@ public class UsageWindowTests
 
         var text = window.GetDailyBudgetText(workDayStartHour: 1);
 
-        text.Should().MatchRegex(@"\(\d+\.\d%\)");
+        text.Should().MatchRegex(@"\[\d+\.\d%\]");
     }
 
     [TestMethod]
