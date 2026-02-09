@@ -104,7 +104,7 @@ On Windows, CodexBar should run inside WSL. `cbstat` calls WSL automatically.
 
 Install CodexBar directly with the same guide:
 
-[https://github.com/Finesssee/Win-CodexBar#installation](https://github.com/Finesssee/Win-CodexBar#installation)
+[https://github.com/steipete/CodexBar](https://github.com/steipete/CodexBar)
 
 ## Usage
 
