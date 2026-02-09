@@ -58,7 +58,7 @@ Windows + WSL setup example:
 ## Requirements
 
 - [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)
-- [CodexBar CLI](https://github.com/Finesssee/Win-CodexBar) installed and configured
+- [CodexBar CLI](https://github.com/steipete/CodexBar.git) installed and configured
 
 ## Privacy and safety
 
@@ -97,7 +97,7 @@ On Windows, CodexBar should run inside WSL. `cbstat` calls WSL automatically.
 
 1. Install WSL: `wsl --install`
 2. Inside WSL, install CodexBar:  
-   [https://github.com/Finesssee/Win-CodexBar#installation](https://github.com/Finesssee/Win-CodexBar#installation)
+   [https://github.com/steipete/CodexBar](https://github.com/steipete/CodexBar)
 3. Run `cbstat` from Windows terminal
 
 ### Linux / macOS
