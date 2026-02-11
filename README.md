@@ -104,6 +104,27 @@ dotnet build -c Release
 
 On Windows, paths use `%USERPROFILE%` instead of `~`.
 
+### Windows and WSL: separate credentials
+
+Windows and WSL have **separate credential stores**. If you use both environments, you need to authenticate in each one independently:
+
+```bash
+# On Windows (PowerShell/CMD)
+claude
+
+# On WSL (Linux shell)
+claude auth login
+```
+
+When running `claude` in a new folder, it may show a "trust this folder" prompt. To authenticate without this prompt, run from your home directory:
+
+```bash
+cd ~
+claude auth login
+```
+
+If you get "Unauthorized" errors in cbstat, re-authenticate with `claude auth login`.
+
 ## Usage
 
 Run:

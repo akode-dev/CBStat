@@ -128,7 +128,11 @@ public class ConsoleRenderer
 
         if (data.HasError)
         {
-            yield return new Markup($"[red]Error[/]");
+            var errorMsg = data.Error ?? "Error";
+            // Truncate long errors for compact view
+            if (errorMsg.Length > 30)
+                errorMsg = errorMsg[..27] + "...";
+            yield return new Markup($"[red]{Markup.Escape(errorMsg)}[/]");
             yield break;
         }
 
@@ -158,11 +162,13 @@ public class ConsoleRenderer
         var color = GetPercentColor(percent);
 
         var (time, day) = FormatResetShort(window.ResetAt);
-        var dayPart = string.IsNullOrEmpty(day) ? "" : $" [dim]{day}[/]";
-        yield return new Markup($"[dim]{prefix}:{time}[/]{dayPart}");
+        var dayPart = string.IsNullOrEmpty(day) ? "   " : $" {day}";
+        // Align with 4-char labels (Upd:, Rfsh:, etc.) - pad prefix to 4 chars
+        yield return new Markup($"[dim]   {prefix}: {time}{dayPart}[/]");
 
         var budgetPart = BuildCompactBudgetPart(window, emphasizeBudget);
-        var percentPart = $"[{color} dim]{percent:F0}%[/]";
+        // Align % under : (position 4) - need 5 chars total for percent part
+        var percentPart = $"[{color}]{percent,4:F0}%[/]";
         yield return string.IsNullOrEmpty(budgetPart)
             ? new Markup(percentPart)
             : new Markup($"{percentPart} {budgetPart}");

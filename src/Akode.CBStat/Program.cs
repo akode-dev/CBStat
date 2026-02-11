@@ -216,16 +216,17 @@ static IRenderable BuildDisplay(
 
     if (displayMode == DisplayMode.Compact)
     {
-        var lines = new List<string>(6);
+        var lines = new List<string>(7);
         if (!string.IsNullOrEmpty(refreshIndicator))
             lines.Add(refreshIndicator);
         if (devMode)
             lines.Add("[yellow]DEV[/]");
-        lines.Add($" UPD: {now:HH:mm}");
-        lines.Add($"RFSH: {refreshSeconds}s");
-        lines.Add("Rfsh: Ctrl+R");
-        lines.Add(" Opt: Ctrl+O");
-        lines.Add("Exit: Ctrl+C");
+        lines.Add($" Upd: {now:HH:mm}");
+        lines.Add($"Rfsh: {refreshSeconds}s");
+        lines.Add("");
+        lines.Add("  ^R: Refresh");
+        lines.Add("  ^O: Options");
+        lines.Add("  ^C: Exit");
 
         return new Rows(
             new Markup($"[dim]CBStat[/] [dim]v{version}[/]"),

@@ -57,31 +57,39 @@ public class UsageService
 
     private static UsageData GetSampleData(string provider)
     {
-        var random = new Random();
         var normalized = provider.ToLowerInvariant();
+
+        // Stable sample data - based on provider, not random
+        var (sessionUsed, weeklyUsed, sessionHours, weeklyDays) = normalized switch
+        {
+            "claude" => (35, 40, 6, 2),
+            "codex" => (45, 30, 8, 3),
+            "gemini" => (25, 20, 4, 1),
+            _ => (50, 50, 5, 2)
+        };
 
         return new UsageData
         {
             Provider = provider,
             Session = new UsageWindow
             {
-                Used = random.Next(20, 80),
+                Used = sessionUsed,
                 Limit = 100,
-                ResetAt = DateTime.UtcNow.AddHours(random.Next(1, 12)),
+                ResetAt = DateTime.UtcNow.AddHours(sessionHours),
                 WindowMinutes = 180
             },
             Weekly = new UsageWindow
             {
-                Used = random.Next(10, 60),
+                Used = weeklyUsed,
                 Limit = 100,
-                ResetAt = DateTime.UtcNow.AddDays(random.Next(1, 5)),
+                ResetAt = DateTime.UtcNow.AddDays(weeklyDays),
                 WindowMinutes = 10080
             },
             Tertiary = normalized == "claude" ? new UsageWindow
             {
-                Used = random.Next(30, 90),
+                Used = 60,
                 Limit = 100,
-                ResetAt = DateTime.UtcNow.AddDays(random.Next(1, 7)),
+                ResetAt = DateTime.UtcNow.AddDays(4),
                 WindowMinutes = 10080
             } : null,
             FetchedAt = DateTime.UtcNow
