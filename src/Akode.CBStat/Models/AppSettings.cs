@@ -6,12 +6,12 @@ namespace Akode.CBStat.Models;
 public enum DisplayMode
 {
     /// <summary>
-    /// Vertical layout with panels stacked.
+    /// Normal layout with panels.
     /// </summary>
     Vertical = 0,
 
     /// <summary>
-    /// Horizontal compact layout for narrow windows.
+    /// Vertical compact layout for narrow windows.
     /// </summary>
     Compact = 1
 }
@@ -47,7 +47,7 @@ public class AppSettings
     public int HttpTimeoutSeconds { get; set; } = 30;
 
     /// <summary>
-    /// Display mode: Vertical (stacked panels) or Compact (horizontal single-line).
+    /// Display mode: Normal (panels) or Vertical (compact).
     /// </summary>
     public DisplayMode DisplayMode { get; set; } = DisplayMode.Vertical;
 
