@@ -91,24 +91,51 @@ public class ClaudeUsageProvider : IUsageProvider
 
     private static async Task<bool> TryCliRefreshAsync(CancellationToken ct)
     {
+        // Try multiple strategies to refresh the token
+        var strategies = new[]
+        {
+            ("claude", "-p \".\" --max-turns 1"),  // Real API call triggers refresh
+            ("claude", "auth status"),             // Check auth status
+        };
+
+        foreach (var (fileName, args) in strategies)
+        {
+            if (await TryRunCliAsync(fileName, args, ct))
+                return true;
+        }
+
+        return false;
+    }
+
+    private static async Task<bool> TryRunCliAsync(string fileName, string arguments, CancellationToken ct)
+    {
         try
         {
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
-            cts.CancelAfter(TimeSpan.FromSeconds(10));
+            cts.CancelAfter(TimeSpan.FromSeconds(30)); // Longer timeout for actual API call
+
+            var homeDir = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+            if (string.IsNullOrEmpty(homeDir))
+                homeDir = Environment.GetEnvironmentVariable("HOME") ?? ".";
 
             var psi = new System.Diagnostics.ProcessStartInfo
             {
-                FileName = "claude",
-                Arguments = "auth status",
+                FileName = fileName,
+                Arguments = arguments,
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
+                RedirectStandardInput = true,
                 UseShellExecute = false,
-                CreateNoWindow = true
+                CreateNoWindow = true,
+                WorkingDirectory = homeDir  // Avoid "trust this folder" prompt
             };
 
             using var process = System.Diagnostics.Process.Start(psi);
             if (process == null)
                 return false;
+
+            // Close stdin to prevent hanging on input prompts
+            process.StandardInput.Close();
 
             await process.WaitForExitAsync(cts.Token);
             return process.ExitCode == 0;
