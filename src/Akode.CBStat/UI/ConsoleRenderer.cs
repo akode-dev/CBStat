@@ -44,29 +44,23 @@ public class ConsoleRenderer
         {
             var rows = new List<IRenderable>();
 
+            var isGemini = data.Provider.Equals("gemini", StringComparison.OrdinalIgnoreCase);
+
             if (data.Session != null)
             {
-                rows.Add(BuildProgressRow(data.SessionLabel, data.Session));
+                var resetText = isGemini ? null : FormatResetCompact(data.Session.ResetAt);
+                rows.Add(BuildProgressRow(data.SessionLabel, data.Session, emphasizeBudget: isGemini, resetText));
             }
 
             if (data.Weekly != null)
             {
-                rows.Add(BuildProgressRow(data.WeeklyLabel, data.Weekly));
+                var resetText = isGemini ? null : FormatResetCompact(data.Weekly.ResetAt);
+                rows.Add(BuildProgressRow(data.WeeklyLabel, data.Weekly, emphasizeBudget: !isGemini, resetText));
             }
 
             if (data.Tertiary != null)
             {
-                rows.Add(BuildProgressRow(data.TertiaryLabel, data.Tertiary));
-            }
-
-            var resetWindow = data.Session ?? data.Weekly ?? data.Tertiary;
-            if (resetWindow != null)
-            {
-                var resetText = resetWindow.FormatResetIn();
-                if (!string.IsNullOrEmpty(resetText))
-                {
-                    rows.Add(new Markup($"[dim]Reset: {resetText}[/]"));
-                }
+                rows.Add(BuildProgressRow(data.TertiaryLabel, data.Tertiary, emphasizeBudget: false));
             }
 
             if (rows.Count == 0)
@@ -85,11 +79,11 @@ public class ConsoleRenderer
             Header = new PanelHeader($"[{titleColor}]{providerTitle}[/]"),
             Border = BoxBorder.Rounded,
             Padding = new Padding(1, 0, 1, 0),
-            Width = 50
+            Width = 55
         };
     }
 
-    private IRenderable BuildProgressRow(string label, UsageWindow window)
+    private IRenderable BuildProgressRow(string label, UsageWindow window, bool emphasizeBudget, string? resetText = null)
     {
         var percent = window.Percent;
         var color = GetPercentColor(percent);
@@ -99,9 +93,16 @@ public class ConsoleRenderer
 
         var bar = new string('\u2588', filledWidth) + new string('\u2591', emptyWidth);
         var dailyBudget = window.GetDailyBudgetText(_workDayStartHour);
-        var budgetPart = string.IsNullOrEmpty(dailyBudget) ? "" : $" [dim]{Markup.Escape(dailyBudget)}[/]";
+        var budgetPart = "";
+        if (!string.IsNullOrEmpty(dailyBudget))
+        {
+            var escaped = Markup.Escape(dailyBudget);
+            budgetPart = emphasizeBudget ? $" {escaped}" : $" [dim]{escaped}[/]";
+        }
 
-        return new Markup($"{label,-8} [{color}]{bar}[/] {percent,3:F0}%{budgetPart}");
+        var resetPart = string.IsNullOrEmpty(resetText) ? "" : $" [dim]{resetText}[/]";
+
+        return new Markup($"{label,-8} [{color}]{bar}[/] [dim]{percent,3:F0}%[/]{budgetPart}{resetPart}");
     }
 
     private IRenderable BuildCompactDisplay(IReadOnlyList<UsageData> data)
@@ -136,9 +137,11 @@ public class ConsoleRenderer
             yield break;
         }
 
+        var isGemini = data.Provider.Equals("gemini", StringComparison.OrdinalIgnoreCase);
+
         if (data.Session != null)
         {
-            foreach (var line in BuildCompactWindowRows("S", data.Session, emphasizeBudget: false))
+            foreach (var line in BuildCompactWindowRows("S", data.Session, emphasizeBudget: isGemini))
             {
                 yield return line;
             }
@@ -149,7 +152,7 @@ public class ConsoleRenderer
 
         if (data.Weekly != null)
         {
-            foreach (var line in BuildCompactWindowRows("W", data.Weekly, emphasizeBudget: true))
+            foreach (var line in BuildCompactWindowRows("W", data.Weekly, emphasizeBudget: !isGemini))
             {
                 yield return line;
             }
@@ -163,12 +166,10 @@ public class ConsoleRenderer
 
         var (time, day) = FormatResetShort(window.ResetAt);
         var dayPart = string.IsNullOrEmpty(day) ? "   " : $" {day}";
-        // Align with 4-char labels (Upd:, Rfsh:, etc.) - pad prefix to 4 chars
-        yield return new Markup($"[dim]   {prefix}: {time}{dayPart}[/]");
+        yield return new Markup($"[dim]{prefix}: {time}{dayPart}[/]");
 
         var budgetPart = BuildCompactBudgetPart(window, emphasizeBudget);
-        // Align % under : (position 4) - need 5 chars total for percent part
-        var percentPart = $"[{color}]{percent,4:F0}%[/]";
+        var percentPart = $"[{color}]{percent,3:F0}%[/]";
         yield return string.IsNullOrEmpty(budgetPart)
             ? new Markup(percentPart)
             : new Markup($"{percentPart} {budgetPart}");
@@ -182,7 +183,7 @@ public class ConsoleRenderer
 
         var escapedBudget = Markup.Escape(budget);
         return emphasizeBudget
-            ? $"[bold]{escapedBudget}[/]"
+            ? escapedBudget
             : $"[dim]{escapedBudget}[/]";
     }
 
@@ -205,6 +206,13 @@ public class ConsoleRenderer
         }
 
         return ($"{local:d MMM}", "");
+    }
+
+    private static string? FormatResetCompact(DateTime? resetAt)
+    {
+        var (time, day) = FormatResetShort(resetAt);
+        if (time == "--:--") return null;
+        return string.IsNullOrEmpty(day) ? time : $"{time} {day}";
     }
 
     private static string GetPercentColor(double percent) => percent switch

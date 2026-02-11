@@ -222,7 +222,7 @@ public class ClaudeUsageProvider : IUsageProvider
 
         // API returns utilization as percentage (e.g., 16.0 = 16%)
         // not as fraction (0.16), so don't multiply by 100
-        var usedPercent = utilization > 1.0 ? (int)utilization : (int)(utilization * 100);
+        var usedPercent = utilization >= 1.0 ? (int)utilization : (int)(utilization * 100);
 
         return new UsageWindow
         {

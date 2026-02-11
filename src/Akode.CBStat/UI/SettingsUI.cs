@@ -181,8 +181,8 @@ public class SettingsUI
         var modes = new Dictionary<string, DisplayMode>
         {
             [Back] = (DisplayMode)(-1),
-            ["Vertical (stacked panels)"] = DisplayMode.Vertical,
-            ["Compact (single-line per provider)"] = DisplayMode.Compact
+            ["Normal"] = DisplayMode.Vertical,
+            ["Vertical"] = DisplayMode.Compact
         };
 
         var current = _settingsService.Settings.DisplayMode;
@@ -241,8 +241,8 @@ public class SettingsUI
 
     private static string FormatDisplayMode(DisplayMode mode) => mode switch
     {
-        DisplayMode.Vertical => "Vertical",
-        DisplayMode.Compact => "Compact",
+        DisplayMode.Vertical => "Normal",
+        DisplayMode.Compact => "Vertical",
         _ => "Unknown"
     };
 }

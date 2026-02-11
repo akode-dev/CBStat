@@ -221,12 +221,12 @@ static IRenderable BuildDisplay(
             lines.Add(refreshIndicator);
         if (devMode)
             lines.Add("[yellow]DEV[/]");
-        lines.Add($" Upd: {now:HH:mm}");
-        lines.Add($"Rfsh: {refreshSeconds}s");
+        lines.Add($"Upd: {now:HH:mm}");
+        lines.Add($"Ref: {refreshSeconds}s");
         lines.Add("");
-        lines.Add("  ^R: Refresh");
-        lines.Add("  ^O: Options");
-        lines.Add("  ^C: Exit");
+        lines.Add(" ^R: Ref");
+        lines.Add(" ^O: Opt");
+        lines.Add(" ^C: Exit");
 
         return new Rows(
             new Markup($"[dim]CBStat[/] [dim]v{version}[/]"),
@@ -237,12 +237,13 @@ static IRenderable BuildDisplay(
     }
 
     var devIndicator = devMode ? "[yellow]DEV[/] | " : string.Empty;
-    var statusLine = $"{refreshIndicator}{devIndicator}Updated: {now:HH:mm:ss} | Refresh: {refreshSeconds}s | [dim]Ctrl+R[/]=refresh [dim]Ctrl+O[/]=settings [dim]Ctrl+C[/]=quit";
+    var statusLine = $"{refreshIndicator}{devIndicator}Updated: {now:HH:mm:ss} | Refresh: {refreshSeconds}s";
+    var keysLine = "[dim]Ctrl+R[/] =refresh [dim]Ctrl+O[/] =settings [dim]Ctrl+C[/] =quit";
 
     return new Rows(
         new Markup($"[bold]CBStat[/] [dim]v{version}[/] - AI Provider Usage Monitor\n"),
         content,
-        new Markup($"\n[dim]{statusLine}[/]")
+        new Markup($"\n[dim]{statusLine}[/]\n{keysLine}")
     );
 }
 

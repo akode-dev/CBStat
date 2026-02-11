@@ -15,7 +15,7 @@ When you work for many hours, it is easy to spend too much quota early and get b
 
 ## What numbers and colors mean
 
-Compact mode example:
+Vertical mode example:
 
 ```text
 S:19:00
@@ -39,15 +39,15 @@ W:12:00 Fr
 
 ## Screenshots
 
+Normal mode:
+
+![Normal mode](docs/img/normal_view.png)
+
 Vertical mode:
 
-![Vertical mode](docs/img/normal_view.png)
+![Vertical mode](docs/img/compact_view.png)
 
-Compact mode:
-
-![Compact mode](docs/img/compact_view.png)
-
-Compact settings:
+Vertical settings:
 
 ![Compact settings](docs/img/compact_settings.png)
 
