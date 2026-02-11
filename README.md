@@ -51,14 +51,17 @@ Compact settings:
 
 ![Compact settings](docs/img/compact_settings.png)
 
-Windows + WSL setup example:
+Multi-terminal setup example:
 
-![Multi-terminal WSL example](docs/img/multiterminal_example_wsl.png)
+![Multi-terminal example](docs/img/multiterminal_example_wsl.png)
 
 ## Requirements
 
 - [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)
-- [CodexBar CLI](https://github.com/steipete/CodexBar.git) installed and configured
+- Provider CLI tools installed and authenticated:
+  - **Claude**: Run `claude` to authenticate
+  - **Gemini**: Run `gemini` to authenticate
+  - **Codex**: Run `codex` to authenticate
 
 ## Privacy and safety
 
@@ -69,7 +72,7 @@ Windows + WSL setup example:
 - No hidden uploads to developer servers
 - Settings are stored locally on your machine
 
-The app reads usage data through your local `codexbar` command and only displays it in your terminal.
+The app reads usage data directly from provider APIs using your local credentials and only displays it in your terminal.
 
 Short version: this is a local monitoring tool, not a virus, and it does not "leak" your usage data to us.
 
@@ -91,20 +94,15 @@ dotnet build -c Release
 
 ## Provider setup
 
-### Windows
+`cbstat` reads credentials from standard locations used by provider CLIs:
 
-On Windows, CodexBar should run inside WSL. `cbstat` calls WSL automatically.
+| Provider | Credentials Path | Setup |
+|----------|-----------------|-------|
+| Claude | `~/.claude/.credentials.json` | Run `claude` CLI to authenticate |
+| Gemini | `~/.gemini/oauth_creds.json` | Run `gemini` CLI to authenticate |
+| Codex | `~/.codex/auth.json` | Run `codex` CLI to authenticate |
 
-1. Install WSL: `wsl --install`
-2. Inside WSL, install CodexBar:  
-   [https://github.com/steipete/CodexBar](https://github.com/steipete/CodexBar)
-3. Run `cbstat` from Windows terminal
-
-### Linux / macOS
-
-Install CodexBar directly with the same guide:
-
-[https://github.com/steipete/CodexBar](https://github.com/steipete/CodexBar)
+On Windows, paths use `%USERPROFILE%` instead of `~`.
 
 ## Usage
 
@@ -128,7 +126,7 @@ cbstat [options]
 Options:
   -i, --interval <seconds>   Refresh interval (default: 120)
   -p, --providers <list>     Comma-separated providers (claude,codex,gemini)
-  -t, --timeout <seconds>    Command timeout (default: 30)
+  -t, --timeout <seconds>    HTTP timeout (default: 30)
       --dev                  Use sample data (developer mode)
   -h, --help                 Show help
 ```
@@ -143,14 +141,15 @@ cbstat --dev
 
 Keyboard shortcuts:
 
-1. `Ctrl+O`: open settings
-2. `Ctrl+C`: quit
+1. `Ctrl+R`: manual refresh
+2. `Ctrl+O`: open settings
+3. `Ctrl+C`: quit
 
 ## Day Start and daily pacing
 
 Daily pacing uses your **local computer time**.
 
-Default day start is **01:00** local time.  
+Default day start is **01:00** local time.
 You can change it in Settings -> `Day Start`.
 
 This matters because your "[daily pace]" value depends on where your personal day boundary starts.

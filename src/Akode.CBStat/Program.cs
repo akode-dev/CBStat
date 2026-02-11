@@ -22,6 +22,7 @@ settings.ApplyCommandLineArgs(args);
 
 var cts = new CancellationTokenSource();
 var openSettings = false;
+var manualRefresh = false;
 
 Console.CancelKeyPress += (_, e) =>
 {
@@ -29,8 +30,7 @@ Console.CancelKeyPress += (_, e) =>
     cts.Cancel();
 };
 
-var runner = new CommandRunner(settings.Settings.CommandTimeoutSeconds);
-var service = new CodexBarService(runner, settings);
+var service = new UsageService(settings);
 var renderer = new ConsoleRenderer();
 var settingsUI = new SettingsUI(settings);
 
@@ -38,8 +38,11 @@ while (true)
 {
     cts = new CancellationTokenSource();
     openSettings = false;
+    manualRefresh = false;
 
-    _ = Task.Run(() => MonitorKeys(cts.Token, () => { openSettings = true; cts.Cancel(); }));
+    _ = Task.Run(() => MonitorKeys(cts.Token,
+        onSettings: () => { openSettings = true; cts.Cancel(); },
+        onRefresh: () => { manualRefresh = true; cts.Cancel(); }));
 
     var refreshInterval = TimeSpan.FromSeconds(settings.Settings.RefreshIntervalSeconds);
 
@@ -112,9 +115,14 @@ while (true)
             }
         });
 
-    if (cts.Token.IsCancellationRequested && !openSettings)
+    if (cts.Token.IsCancellationRequested && !openSettings && !manualRefresh)
     {
         break;
+    }
+
+    if (manualRefresh)
+    {
+        continue;
     }
 
     if (initialData == null)
@@ -122,8 +130,7 @@ while (true)
         if (openSettings)
         {
             await settingsUI.ShowAsync();
-            runner = new CommandRunner(settings.Settings.CommandTimeoutSeconds);
-            service = new CodexBarService(runner, settings);
+            service = new UsageService(settings);
             continue;
         }
         break;
@@ -175,8 +182,12 @@ while (true)
     if (openSettings)
     {
         await settingsUI.ShowAsync();
-        runner = new CommandRunner(settings.Settings.CommandTimeoutSeconds);
-        service = new CodexBarService(runner, settings);
+        service = new UsageService(settings);
+        continue;
+    }
+
+    if (manualRefresh)
+    {
         continue;
     }
 
@@ -212,6 +223,7 @@ static IRenderable BuildDisplay(
             lines.Add("[yellow]DEV[/]");
         lines.Add($" UPD: {now:HH:mm}");
         lines.Add($"RFSH: {refreshSeconds}s");
+        lines.Add("Rfsh: Ctrl+R");
         lines.Add(" Opt: Ctrl+O");
         lines.Add("Exit: Ctrl+C");
 
@@ -224,7 +236,7 @@ static IRenderable BuildDisplay(
     }
 
     var devIndicator = devMode ? "[yellow]DEV[/] | " : string.Empty;
-    var statusLine = $"{refreshIndicator}{devIndicator}Updated: {now:HH:mm:ss} | Refresh: {refreshSeconds}s | [dim]Ctrl+O[/]=settings [dim]Ctrl+C[/]=quit";
+    var statusLine = $"{refreshIndicator}{devIndicator}Updated: {now:HH:mm:ss} | Refresh: {refreshSeconds}s | [dim]Ctrl+R[/]=refresh [dim]Ctrl+O[/]=settings [dim]Ctrl+C[/]=quit";
 
     return new Rows(
         new Markup($"[bold]CBStat[/] [dim]v{version}[/] - AI Provider Usage Monitor\n"),
@@ -233,7 +245,7 @@ static IRenderable BuildDisplay(
     );
 }
 
-static void MonitorKeys(CancellationToken ct, Action onSettings)
+static void MonitorKeys(CancellationToken ct, Action onSettings, Action onRefresh)
 {
     while (!ct.IsCancellationRequested)
     {
@@ -243,6 +255,11 @@ static void MonitorKeys(CancellationToken ct, Action onSettings)
             if (key.Key == ConsoleKey.O && key.Modifiers.HasFlag(ConsoleModifiers.Control))
             {
                 onSettings();
+                return;
+            }
+            if (key.Key == ConsoleKey.R && key.Modifiers.HasFlag(ConsoleModifiers.Control))
+            {
+                onRefresh();
                 return;
             }
         }
@@ -259,11 +276,12 @@ static void ShowHelp()
     AnsiConsole.MarkupLine("[bold]Options:[/]");
     AnsiConsole.MarkupLine("  -i, --interval <seconds>   Refresh interval (default: 120)");
     AnsiConsole.MarkupLine("  -p, --providers <list>     Comma-separated providers (claude,codex,gemini)");
-    AnsiConsole.MarkupLine("  -t, --timeout <seconds>    Command timeout (default: 30)");
+    AnsiConsole.MarkupLine("  -t, --timeout <seconds>    HTTP timeout (default: 30)");
     AnsiConsole.MarkupLine("      --dev                  Use sample data (developer mode)");
     AnsiConsole.MarkupLine("  -h, --help                 Show this help");
     AnsiConsole.WriteLine();
     AnsiConsole.MarkupLine("[bold]Keyboard shortcuts:[/]");
+    AnsiConsole.MarkupLine("  Ctrl+R                     Manual refresh");
     AnsiConsole.MarkupLine("  Ctrl+O                     Open settings");
     AnsiConsole.MarkupLine("  Ctrl+C                     Quit");
     AnsiConsole.WriteLine();

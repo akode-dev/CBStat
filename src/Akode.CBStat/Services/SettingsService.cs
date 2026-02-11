@@ -90,7 +90,7 @@ public class SettingsService
 
                 case "--timeout" or "-t" when i + 1 < args.Length:
                     if (int.TryParse(args[++i], out var timeout) && timeout > 0)
-                        _settings.CommandTimeoutSeconds = timeout;
+                        _settings.HttpTimeoutSeconds = timeout;
                     break;
             }
         }
