@@ -37,14 +37,14 @@ public class AppSettings
     public int RefreshIntervalSeconds { get; set; } = 120;
 
     /// <summary>
-    /// Use sample data instead of calling codexbar CLI (for development/testing).
+    /// Use sample data instead of calling provider APIs (for development/testing).
     /// </summary>
     public bool DeveloperModeEnabled { get; set; } = false;
 
     /// <summary>
-    /// Command timeout in seconds.
+    /// HTTP request timeout in seconds.
     /// </summary>
-    public int CommandTimeoutSeconds { get; set; } = 30;
+    public int HttpTimeoutSeconds { get; set; } = 30;
 
     /// <summary>
     /// Display mode: Vertical (stacked panels) or Compact (horizontal single-line).
@@ -74,7 +74,7 @@ public class AppSettings
         Providers = ProviderConfig.GetDefaults().ToList(),
         RefreshIntervalSeconds = 120,
         DeveloperModeEnabled = false,
-        CommandTimeoutSeconds = 30,
+        HttpTimeoutSeconds = 30,
         DisplayMode = DisplayMode.Vertical,
         WorkDayStartHour = 1
     };

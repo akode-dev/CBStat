@@ -18,3 +18,5 @@ Thumbs.db
 
 # Build
 publish/
+.claude
+CLAUDE.md
