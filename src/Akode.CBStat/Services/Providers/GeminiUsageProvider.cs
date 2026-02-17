@@ -34,8 +34,13 @@ public class GeminiUsageProvider : IUsageProvider
             var accessToken = credentials.AccessToken;
 
             // Try API refresh if token is expired
-            if (credentials.IsExpired && !string.IsNullOrEmpty(credentials.RefreshToken))
+            if (credentials.IsExpired)
             {
+                if (string.IsNullOrEmpty(credentials.RefreshToken))
+                {
+                    return CreateError("Token expired. Run `gemini` to re-authenticate.");
+                }
+
                 var refreshed = await RefreshTokenAsync(credentials.RefreshToken, ct);
                 if (refreshed != null)
                 {
@@ -43,36 +48,11 @@ public class GeminiUsageProvider : IUsageProvider
                 }
                 else
                 {
-                    // API refresh failed, try CLI refresh
-                    if (await TryCliRefreshAsync(ct))
-                    {
-                        credentials = await LoadCredentialsAsync(ct);
-                        if (credentials != null)
-                            accessToken = credentials.AccessToken;
-                    }
-                    else
-                    {
-                        return CreateError("Token expired. Run `gemini` to re-authenticate.");
-                    }
+                    return CreateError("Token expired. Run `gemini` to re-authenticate.");
                 }
             }
 
-            var result = await FetchUsageAsync(accessToken, ct);
-
-            // If unauthorized, try CLI refresh and retry once
-            if (result.Error?.Contains("Unauthorized") == true)
-            {
-                if (await TryCliRefreshAsync(ct))
-                {
-                    credentials = await LoadCredentialsAsync(ct);
-                    if (credentials != null)
-                    {
-                        return await FetchUsageAsync(credentials.AccessToken, ct);
-                    }
-                }
-            }
-
-            return result;
+            return await FetchUsageAsync(accessToken, ct);
         }
         catch (HttpRequestException ex)
         {
@@ -85,36 +65,6 @@ public class GeminiUsageProvider : IUsageProvider
         catch (Exception ex)
         {
             return CreateError($"Error: {ex.Message}");
-        }
-    }
-
-    private static async Task<bool> TryCliRefreshAsync(CancellationToken ct)
-    {
-        try
-        {
-            using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
-            cts.CancelAfter(TimeSpan.FromSeconds(10));
-
-            var psi = new System.Diagnostics.ProcessStartInfo
-            {
-                FileName = "gemini",
-                Arguments = "--version",
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                UseShellExecute = false,
-                CreateNoWindow = true
-            };
-
-            using var process = System.Diagnostics.Process.Start(psi);
-            if (process == null)
-                return false;
-
-            await process.WaitForExitAsync(cts.Token);
-            return process.ExitCode == 0;
-        }
-        catch
-        {
-            return false;
         }
     }
 

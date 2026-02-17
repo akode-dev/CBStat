@@ -35,8 +35,13 @@ public class ClaudeUsageProvider : IUsageProvider
             var accessToken = credentials.AccessToken;
 
             // Try API refresh if token is expired
-            if (credentials.IsExpired && !string.IsNullOrEmpty(credentials.RefreshToken))
+            if (credentials.IsExpired)
             {
+                if (string.IsNullOrEmpty(credentials.RefreshToken))
+                {
+                    return CreateError("Token expired. Run `claude auth login`");
+                }
+
                 var refreshed = await RefreshTokenAsync(credentials.RefreshToken, ct);
                 if (refreshed != null)
                 {
@@ -44,36 +49,11 @@ public class ClaudeUsageProvider : IUsageProvider
                 }
                 else
                 {
-                    // API refresh failed, try CLI refresh
-                    if (await TryCliRefreshAsync(ct))
-                    {
-                        credentials = await LoadCredentialsAsync(ct);
-                        if (credentials != null)
-                            accessToken = credentials.AccessToken;
-                    }
-                    else
-                    {
-                        return CreateError("Token expired. Run `claude` to re-authenticate.");
-                    }
+                    return CreateError("Token expired. Run `claude auth login`");
                 }
             }
 
-            var result = await FetchUsageAsync(accessToken, ct);
-
-            // If unauthorized, try CLI refresh and retry once
-            if (result.Error?.Contains("Unauthorized") == true)
-            {
-                if (await TryCliRefreshAsync(ct))
-                {
-                    credentials = await LoadCredentialsAsync(ct);
-                    if (credentials != null)
-                    {
-                        return await FetchUsageAsync(credentials.AccessToken, ct);
-                    }
-                }
-            }
-
-            return result;
+            return await FetchUsageAsync(accessToken, ct);
         }
         catch (HttpRequestException ex)
         {
@@ -86,63 +66,6 @@ public class ClaudeUsageProvider : IUsageProvider
         catch (Exception ex)
         {
             return CreateError($"Error: {ex.Message}");
-        }
-    }
-
-    private static async Task<bool> TryCliRefreshAsync(CancellationToken ct)
-    {
-        // Try multiple strategies to refresh the token
-        var strategies = new[]
-        {
-            ("claude", "-p \".\" --max-turns 1"),  // Real API call triggers refresh
-            ("claude", "auth status"),             // Check auth status
-        };
-
-        foreach (var (fileName, args) in strategies)
-        {
-            if (await TryRunCliAsync(fileName, args, ct))
-                return true;
-        }
-
-        return false;
-    }
-
-    private static async Task<bool> TryRunCliAsync(string fileName, string arguments, CancellationToken ct)
-    {
-        try
-        {
-            using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
-            cts.CancelAfter(TimeSpan.FromSeconds(30)); // Longer timeout for actual API call
-
-            var homeDir = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-            if (string.IsNullOrEmpty(homeDir))
-                homeDir = Environment.GetEnvironmentVariable("HOME") ?? ".";
-
-            var psi = new System.Diagnostics.ProcessStartInfo
-            {
-                FileName = fileName,
-                Arguments = arguments,
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                RedirectStandardInput = true,
-                UseShellExecute = false,
-                CreateNoWindow = true,
-                WorkingDirectory = homeDir  // Avoid "trust this folder" prompt
-            };
-
-            using var process = System.Diagnostics.Process.Start(psi);
-            if (process == null)
-                return false;
-
-            // Close stdin to prevent hanging on input prompts
-            process.StandardInput.Close();
-
-            await process.WaitForExitAsync(cts.Token);
-            return process.ExitCode == 0;
-        }
-        catch
-        {
-            return false;
         }
     }
 
