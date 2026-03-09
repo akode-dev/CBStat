@@ -16,4 +16,9 @@
 - Dim percentage values, keep budget brackets bright for key windows
 - Improve vertical view alignment, remove unnecessary indentation
 - Shorten footer labels in vertical view (Ref, Opt instead of Refresh, Options)
+
+## v1.5.0 — 2026-03-09
+
+- Fix: Use claude-code User-Agent header to resolve 429 rate limit errors from Anthropic API
+- Refactor: Remove CLI token refresh fallback from providers (native HTTP only)
 - Split keyboard shortcuts to separate line in normal view
