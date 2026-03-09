@@ -15,6 +15,10 @@ public class ClaudeUsageProvider : IUsageProvider
 
     private readonly HttpClient _httpClient;
 
+    // Cache last successful result to return during rate limiting
+    private static UsageData? _lastSuccessfulResult;
+    private static DateTime _rateLimitedUntil = DateTime.MinValue;
+
     public string ProviderId => "claude";
 
     public ClaudeUsageProvider(HttpClient httpClient)
@@ -26,6 +30,18 @@ public class ClaudeUsageProvider : IUsageProvider
     {
         try
         {
+            // If we're rate limited, return cached result or wait message
+            if (DateTime.UtcNow < _rateLimitedUntil)
+            {
+                if (_lastSuccessfulResult != null)
+                {
+                    // Return cached data with a note
+                    return _lastSuccessfulResult with { Error = null };
+                }
+                var waitSeconds = (int)(_rateLimitedUntil - DateTime.UtcNow).TotalSeconds;
+                return CreateError($"Rate limited. Retry in {waitSeconds}s");
+            }
+
             var credentials = await LoadCredentialsAsync(ct);
             if (credentials == null)
             {
@@ -58,17 +74,39 @@ public class ClaudeUsageProvider : IUsageProvider
                 }
             }
 
+            // Re-read credentials right before API call in case Claude Code updated the token
+            var freshCredentials = await LoadCredentialsAsync(ct);
+            if (freshCredentials != null)
+                accessToken = freshCredentials.AccessToken;
+
             var result = await FetchUsageAsync(accessToken, ct);
 
-            // If unauthorized, try CLI refresh and retry once
-            if (result.Error?.Contains("Unauthorized") == true)
+            // Cache successful result
+            if (result.Error == null)
             {
-                if (await TryCliRefreshAsync(ct))
+                _lastSuccessfulResult = result;
+            }
+
+            // If error (unauthorized or network), try with fresh credentials once more
+            if (result.Error != null)
+            {
+                // Wait briefly and re-read credentials - Claude Code may have just refreshed
+                await Task.Delay(500, ct);
+                freshCredentials = await LoadCredentialsAsync(ct);
+                if (freshCredentials != null && freshCredentials.AccessToken != accessToken)
                 {
-                    credentials = await LoadCredentialsAsync(ct);
-                    if (credentials != null)
+                    var retryResult = await FetchUsageAsync(freshCredentials.AccessToken, ct);
+                    if (retryResult.Error == null)
+                        return retryResult;
+                }
+
+                // If still failing and it's auth-related, try CLI refresh
+                if (result.Error.Contains("Unauthorized") && await TryCliRefreshAsync(ct))
+                {
+                    freshCredentials = await LoadCredentialsAsync(ct);
+                    if (freshCredentials != null)
                     {
-                        return await FetchUsageAsync(credentials.AccessToken, ct);
+                        return await FetchUsageAsync(freshCredentials.AccessToken, ct);
                     }
                 }
             }
@@ -152,7 +190,7 @@ public class ClaudeUsageProvider : IUsageProvider
         request.Headers.Add("Authorization", $"Bearer {accessToken}");
         request.Headers.Add("anthropic-beta", BetaHeader);
         request.Headers.Add("Accept", "application/json");
-        request.Headers.Add("User-Agent", "CBStat");
+        request.Headers.Add("User-Agent", "claude-code/2.1.0");
 
         using var response = await _httpClient.SendAsync(request, ct);
 
@@ -161,7 +199,30 @@ public class ClaudeUsageProvider : IUsageProvider
             return CreateError("Unauthorized. Run `claude auth login`");
         }
 
-        response.EnsureSuccessStatusCode();
+        if (response.StatusCode == System.Net.HttpStatusCode.TooManyRequests)
+        {
+            // Set rate limit backoff - check Retry-After header or default to 60s
+            var retryAfter = 60;
+            if (response.Headers.TryGetValues("Retry-After", out var values))
+            {
+                var retryValue = values.FirstOrDefault();
+                if (int.TryParse(retryValue, out var parsed))
+                    retryAfter = parsed;
+            }
+            _rateLimitedUntil = DateTime.UtcNow.AddSeconds(retryAfter);
+
+            // Return cached result if available
+            if (_lastSuccessfulResult != null)
+            {
+                return _lastSuccessfulResult with { Error = null };
+            }
+            return CreateError($"Rate limited. Retry in {retryAfter}s");
+        }
+
+        if (!response.IsSuccessStatusCode)
+        {
+            return CreateError($"HTTP {(int)response.StatusCode}: {response.ReasonPhrase}");
+        }
 
         var json = await response.Content.ReadFromJsonAsync<JsonElement>(ct);
         return ParseUsageResponse(json);
