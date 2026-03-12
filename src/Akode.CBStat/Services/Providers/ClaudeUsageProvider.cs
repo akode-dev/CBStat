@@ -19,6 +19,10 @@ public class ClaudeUsageProvider : IUsageProvider
     private static UsageData? _lastSuccessfulResult;
     private static DateTime _rateLimitedUntil = DateTime.MinValue;
 
+    // Claude Code version detection for User-Agent
+    private const string DefaultVersion = "2.1.0";
+    private static readonly Lazy<string> _claudeCodeVersion = new(DetectClaudeCodeVersion);
+
     public string ProviderId => "claude";
 
     public ClaudeUsageProvider(HttpClient httpClient)
@@ -184,13 +188,74 @@ public class ClaudeUsageProvider : IUsageProvider
         }
     }
 
+    private static string DetectClaudeCodeVersion()
+    {
+        try
+        {
+            var homeDir = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+            if (string.IsNullOrEmpty(homeDir))
+                homeDir = Environment.GetEnvironmentVariable("HOME") ?? ".";
+
+            var psi = new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = "claude",
+                Arguments = "--version",
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true,
+                WorkingDirectory = homeDir
+            };
+
+            using var process = System.Diagnostics.Process.Start(psi);
+            if (process == null)
+                return DefaultVersion;
+
+            // 5-second timeout
+            if (!process.WaitForExit(5000))
+            {
+                try { process.Kill(); } catch { }
+                return DefaultVersion;
+            }
+
+            if (process.ExitCode != 0)
+                return DefaultVersion;
+
+            var output = process.StandardOutput.ReadToEnd().Trim();
+            return ParseClaudeVersionOutput(output);
+        }
+        catch
+        {
+            return DefaultVersion;
+        }
+    }
+
+    /// <summary>
+    /// Parses the output of "claude --version" to extract version number.
+    /// Example: "2.1.74 (Claude Code)" -> "2.1.74"
+    /// </summary>
+    internal static string ParseClaudeVersionOutput(string output)
+    {
+        if (string.IsNullOrWhiteSpace(output))
+            return DefaultVersion;
+
+        var spaceIndex = output.IndexOf(' ');
+        var version = spaceIndex > 0 ? output[..spaceIndex] : output.Trim();
+
+        // Validate version format (e.g., "2.1.74" or "2.1")
+        if (System.Text.RegularExpressions.Regex.IsMatch(version, @"^\d+\.\d+"))
+            return version;
+
+        return DefaultVersion;
+    }
+
     private async Task<UsageData> FetchUsageAsync(string accessToken, CancellationToken ct)
     {
         using var request = new HttpRequestMessage(HttpMethod.Get, UsageEndpoint);
         request.Headers.Add("Authorization", $"Bearer {accessToken}");
         request.Headers.Add("anthropic-beta", BetaHeader);
         request.Headers.Add("Accept", "application/json");
-        request.Headers.Add("User-Agent", "claude-code/2.1.0");
+        request.Headers.Add("User-Agent", $"claude-code/{_claudeCodeVersion.Value}");
 
         using var response = await _httpClient.SendAsync(request, ct);
 

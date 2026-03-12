@@ -22,3 +22,8 @@
 - Fix: Use claude-code User-Agent header to resolve 429 rate limit errors from Anthropic API
 - Refactor: Remove CLI token refresh fallback from providers (native HTTP only)
 - Split keyboard shortcuts to separate line in normal view
+
+## v1.6.0 — 2026-03-12
+
+- Detect Claude Code version dynamically by running `claude --version` instead of hardcoding
+- Falls back to default version if CLI is unavailable
